@@ -53,9 +53,9 @@
 #include "state_transitions.h"
 #include "repeated_states.h"
 #include "search.h"
+#include "extract_counterexample.h"
 
-
-
+#include <stdio.h>
 
 
 
@@ -106,6 +106,9 @@ int gsat_calls = 0, gcnfs = 0, grs_sat_calls = 0, gss_sat_calls = 0, gsc_sat_cal
 int gr_sat_calls = 0, grp_sat_calls = 0;
 int grs_comps = 0, grs_conf_comps = 0;
 int grs_hits = 0, gss_hits = 0, gdp_calls = 0, gup_calls = 0;
+
+int sample_time;
+
 
 /* the command line inputs
  */
@@ -242,6 +245,7 @@ FactList *gpredicates_and_types = NULL;
  *               predicate aritys,
  *               defined types of predicate args
  */
+
 Token gconstants[MAX_CONSTANTS];
 int gnum_constants = 0;
 Token gtype_names[MAX_TYPES];
@@ -259,6 +263,7 @@ int gnum_predicates = 0;
 
 
 /* the domain in integer (Fact) representation
+   初始状态的表示，初始为真、初始未知的，初始是or的，初始三oneof的
  */
 Operator_pointer goperators[MAX_OPERATORS];
 int gnum_operators = 0;
@@ -278,6 +283,7 @@ WffNode *ggoal = NULL;
 /* stores inertia - information: is any occurence of the predicate
  * added / deleted in the uninstantiated ops?
  * is any occurence of the predicate unknown?
+ * 在未实例化的操作中是否出现添加/删除谓词?谓词的出现是否未知?
  */
 Bool gis_added[MAX_PREDICATES];
 Bool gis_deleted[MAX_PREDICATES];
@@ -293,6 +299,7 @@ Bool gis_unknown[MAX_PREDICATES];
  * the same mirrored for unknown facts -- "known negatives" is transferred
  * here to "known positives and unknowns"; seems more adequate for later 
  * purposes, giving access to unknowns directly.
+ * 存储数据，但是用的应该是下面规划图里面的
  */
 Facts *ginitial = NULL;
 int gnum_initial = 0;
@@ -364,12 +371,11 @@ int gnum_hard_templates;
 
 
 /* store the final "relevant facts"
+   规划连接最终查找的fact
  */
 Fact grelevant_facts[MAX_RELEVANT_FACTS];
 int gnum_relevant_facts = 0;
 int gnum_pp_facts = 0;
-
-
 
 /* the final actions and problem representation
  */
@@ -385,6 +391,7 @@ int gnum_initial_equivalence;
 /* to know how much space we need for unknown conds in states
  */
 int gmax_E;
+
 /* the initial OR constraints in final coding
  */
 int **ginitial_or;
@@ -413,14 +420,10 @@ int gnum_initial_or;
 OpConn *gop_conn;
 int gnum_op_conn;
 
-
-
 /* one effects array ...
  */
 EfConn *gef_conn;
 int gnum_ef_conn;
-
-
 
 /* one facts array.
  */
@@ -712,8 +715,6 @@ int main( int argc, char *argv[] )
     exit( 1 );
   }
 
-
-
   /* now instantiate operators;
    */
 
@@ -726,6 +727,7 @@ int main( int argc, char *argv[] )
    */
   /*将domain中的字符串编辑为数字，用表来映射*/
   /*同时将第一步时候的状态以及动作的条件按照这个数字表保存*/
+  /*这一步将常量、谓语、动作存储到表中*/
   encode_domain_in_integers();
 
   /* inertia preprocessing, first step:
@@ -806,7 +808,24 @@ int main( int argc, char *argv[] )
     而寻找要改成已知的
    */
   collect_relevant_facts();
-
+  /*Action *a;
+  for(a = gactions;a;a=a->next){
+    print_Action(a);
+    printf("11111\n");
+  }*/
+  /*修改inial看看结果
+    */
+   /*
+   print_state(ginitial_state);
+   
+   ginitial_state.num_U = 4;
+   ginitial_state.U[2] = ginitial_state.U[5];
+   ginitial_state.U[3] = ginitial_state.U[6];
+   */
+   print_state(ginitial_state);
+   
+   
+  
   times( &end );
   TIME( grelev_time );
 
@@ -847,7 +866,7 @@ int main( int argc, char *argv[] )
      */
     gmax_clauses += ginitial_or_length[i] * (ginitial_or_length[i] - 1);
   }
-
+  /*printf("gmax_clauses:%d\n",gmax_clauses);*/
   /* 2 * #initial equivalences plus #initial OR clauses plus
    * 2 * [as we got two cnfs glued together] max ops to induce * 
    * (max ef implic of op * max noop implic) plus
@@ -919,7 +938,25 @@ int main( int argc, char *argv[] )
     2 对于反例应该如何得到，即对于一个plan是怎样验证的，而对怎么判断这个规划是否能解
   */
   found_plan = FALSE;
-  
+  State testinit = ginitial_state,goal = ggoal_state;
+  /*
+  ginitial_state.num_U=5;
+  ginitial_state.F=(int *)malloc(5*sizeof(int));
+  ginitial_state.num_F=1;
+  ginitial_state.F[0]=10;
+  */
+  /*
+  printf("/n输出初始状态");
+  print_state(ginitial_state);
+  printf("maxF:%d\n",ginitial_state.max_F);
+  printf("\n");
+
+  printf("---------\n目标状态");
+  print_state(ggoal_state);
+  printf("\n");
+  printf("---------\n");*/
+  /*plan*/
+    
   if ( gcmd_line.ehc ) {
     /*这个初始状态可以是样本，就是根据这个ginitial_state进行搜索plan*/
     
@@ -928,8 +965,8 @@ int main( int argc, char *argv[] )
   /*默认就是强制爬山和最佳优先搜索*/
   if ( !found_plan ) {
       if ( gcmd_line.ehc ) {
-	  printf("\n\nEnforced Hill-climbing failed !");
-	  printf("\nswitching to Best-first Search now.\n");
+    printf("\n\nEnforced Hill-climbing failed !");
+    printf("\nswitching to Best-first Search now.\n");
       }
     gnum_plan_ops = 0;
     found_plan = do_best_first_search();
@@ -941,10 +978,10 @@ int main( int argc, char *argv[] )
   if ( found_plan ) {
     print_plan();
   }
-
   output_planner_info();
 
   printf("\n\n");
+  conputerCounter();
   exit( 0 );
 
 }

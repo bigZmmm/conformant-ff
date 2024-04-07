@@ -120,7 +120,7 @@ Bool do_enforced_hill_climbing(State *start, State *end)
   source_to_dest(&S, start);
   /*计算启发式*/
   h = get_1P_and_H(&S, &lscurrent_goals, NULL, NULL, -1);
-
+  printf("H:%d\n",h);
   if (h == INFINITY)
   {
     return FALSE;
@@ -163,11 +163,23 @@ Bool do_enforced_hill_climbing(State *start, State *end)
       extend_fixed_clauses_base_encoding(0);
       return FALSE;
     }
+    
     source_to_dest(&S, &S_);
+    /*print_state(S);*/
     h = h_;
     printf("\n                                %4d            ", h);
+    /*
+    printf("\n输出当前的plan集合\n");
+    printf(" 当前的动作数目 %d\n",gnum_plan_ops);
+    for ( i = 0; i < gnum_plan_ops; i++ ) {
+      printf("%4d: ", i);
+      print_op_name( gplan_ops[i] );
+      
+      printf("\n     ");
+    }
+    printf("结束！\n");  */
   }
-
+  
   return TRUE;
 }
 
@@ -656,6 +668,14 @@ void print_state(State S)
     printf("\n");
     print_ft_name(S.U[i]);
   }
+  printf("\nUE:");
+  for (i = 0; i < S.num_unknown_E; i++)
+  {
+    printf("\n");
+    print_ft_name(S.unknown_E[i]);
+  }
+
+
 }
 
 /****************************************

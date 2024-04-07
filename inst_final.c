@@ -623,6 +623,7 @@ void create_final_goal_state(void)
 
   set_relevants_in_wff(&ggoal);
   cleanup_wff(&ggoal);
+  
   if (ggoal->connective == TRU)
   {
     printf("\nff: goal can be simplified to TRUE. The empty plan solves it\n\n");
@@ -2002,7 +2003,25 @@ void build_connectivity_graph(void)
   {
     gdomination_valid = FALSE;
   }
-
+  /*
+    gnum_initial_or = 0;
+    
+    ginitial_or_length[1] = ginitial_or_length[10];
+    ginitial_or[1][0] = ginitial_or[10][0];
+    ginitial_or[1][1] = ginitial_or[10][1];
+   
+    ginitial_or_length[2] = ginitial_or_length[9];
+    ginitial_or[2][0] = ginitial_or[9][0];
+    ginitial_or[2][1] = ginitial_or[9][1];
+    
+    ginitial_or_length[3] = ginitial_or_length[10];
+    ginitial_or[3][0] = ginitial_or[8][0];
+    ginitial_or[3][1] = ginitial_or[8][1];
+    
+    ginitial_or_length[0] = 2;
+    ginitial_or[0][0] = ginitial_or[0][3];
+    ginitial_or[0][1] = ginitial_or[0][4];
+    */
   if (gcmd_line.display_info == 121)
   {
     printf("\n\ncreated connectivity graph as follows:");
@@ -2023,6 +2042,7 @@ void build_connectivity_graph(void)
       {
         printf("\neffect %d", gop_conn[i].E[j]);
       }
+      printf("\num_active_Ps %d", gop_conn[i].num_active_Ps);
     }
 
     printf("\n\n-------------------EFFECT ARRAY:----------------------");
@@ -2067,6 +2087,8 @@ void build_connectivity_graph(void)
         }
         print_ft_name(gef_conn[i].D[j]);
       }
+      /*可能的影响
+      */
       printf("\n----------IMPLIEDS:");
       for (j = 0; j < gef_conn[i].num_I; j++)
       {
@@ -2124,7 +2146,9 @@ void build_connectivity_graph(void)
       printf(" <-> ");
       print_ft_name(ginitial_equivalence_notA[i]);
     }
-
+    
+    
+    
     printf("\n\n----------------------INITIAL ORS:-----------------------------");
     for (i = 0; i < gnum_initial_or; i++)
     {
@@ -2135,6 +2159,9 @@ void build_connectivity_graph(void)
         printf(" ");
       }
     }
+    /*修改or*/
+    
+
     fflush(stdout);
   }
 }

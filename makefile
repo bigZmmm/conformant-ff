@@ -11,10 +11,10 @@ ADDONS	=
 
 CC      = gcc
 
-CFLAGS	= -O6 -Wall -g -ansi
+CFLAGS	=-O6 -Wall -g  -lz3
 # -g -pg
 
-LIBS    = -lm
+LIBS    = -lm -lz3
 
 
 ####### Files
@@ -40,7 +40,8 @@ SOURCES 	= main.c \
 	relax.c \
 	search.c \
 	state_transitions.c \
-	repeated_states.c
+	repeated_states.c \
+	extract_counterexample.c \
 
 
 OBJECTS 	= $(SOURCES:.c=.o)
@@ -62,7 +63,7 @@ OBJECTS 	= $(SOURCES:.c=.o)
 
 
 ff: $(OBJECTS) $(PDDL_PARSER_OBJ)
-	$(CC) -o ff $(OBJECTS) $(PDDL_PARSER_OBJ) $(CFLAGS) $(LIBS)
+	$(CC) -o ff $(OBJECTS) $(PDDL_PARSER_OBJ) $(CFLAGS) $(LIBS) 
 
 
 

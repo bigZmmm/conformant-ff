@@ -546,7 +546,8 @@ void r_do_membership_lists(void)
     fflush(stdout);
   }
 }
-
+/* S:当前状态，cur_goal:当前目标，ehc_father：NULL，bfs_father：NULL，S_op:-1
+  */
 int get_1P_and_H(State *S, State *current_goals,
                  EhcNode *ehc_father, BfsNode *bfs_father, int S_op)
 
@@ -569,11 +570,16 @@ int get_1P_and_H(State *S, State *current_goals,
 
   source_to_dest(&lcurrent_goals, current_goals);
   /*初始化father这些固定节点*/
+  /*对里面的LU 和lnum_u初始化*/
+  
+  
   initialize_fixpoint(S, ehc_father, bfs_father, S_op);
   reach = build_fixpoint(S, &max);
+  
   if (gcmd_line.display_info == 122 ||
       (gcmd_line.R && gcmd_line.debug))
   {
+    /*printf("第一步～～%d %d\n",reach,max);*/
     print_fixpoint_result();
     fflush(stdout);
   }
@@ -844,7 +850,7 @@ Bool build_fixpoint(State *S, int *max)
     }
 
     new_U = append_new_U_layer(time);
-
+    /*printf("append_new_U_layer：%d\n",time);*/
     if (stop_ft == lnum_F && !new_U)
     {
       *max = time;
@@ -871,12 +877,14 @@ void initialize_fixpoint(State *S,
   lnum_ch_E = 0;
 
   lnum_F = 0;
+  /*遍历S中的所有F（为真），如果没有加入到fixpoint，加入*/
   for (i = 0; i < S->num_F; i++)
   {
     if (gft_conn[S->F[i]].in_F)
     {
       continue;
     }
+    
     new_fact(S->F[i]);
   }
 
@@ -954,8 +962,11 @@ void insert_path_implications(State *S, EhcNode *ehc_father, BfsNode *bfs_father
 {
 
   static Bool fc = TRUE;
+  /*应该就是状态的存储，一个数组*/
   static State_pointer *path;
+  /*记录对应的操作*/
   static int *path_op;
+  /*分配的是有关fact的，对应于所有fact的初始都为false*/
   static Bool *Ut, *Utpp;
 
   int i, j, k, ef, num_path, t, c, conu, addu, time, S_num_path = -17;
@@ -992,6 +1003,7 @@ void insert_path_implications(State *S, EhcNode *ehc_father, BfsNode *bfs_father
   /*     printf("\n-----end state %d", num_path+1); print_state( *path[num_path+1] ); */
   /*     fflush(stdout); */
   /*   } */
+  /*S_num_path 存储非固定子句部分开始的位置*/
   /* S_num_path stores the point on path at which non-fixed-clauses-part
    * begins. at least I hope so... :-|
    *
@@ -1172,6 +1184,7 @@ void insert_path_implications(State *S, EhcNode *ehc_father, BfsNode *bfs_father
     /* note: this might also be very first state in BFS or manual
      * -- in which case gnum_plan_ops == 0!
      */
+    /*max_len -1*/
     S_num_path = num_path - 1;
     for (i = gnum_plan_ops; i >= 0; i--)
     {
@@ -1186,6 +1199,11 @@ void insert_path_implications(State *S, EhcNode *ehc_father, BfsNode *bfs_father
       {
         path_op[num_path] = gplan_ops[i - 1];
       }
+      /*
+      printf("输出计算启发式中的gplan_states：");
+      print_state(gplan_states[i]);
+      第一步的gplan_states[0]就是初始状状态
+      */
       path[num_path--] = &(gplan_states[i]);
       if (gcmd_line.R && gcmd_line.debug)
       {
@@ -1200,6 +1218,7 @@ void insert_path_implications(State *S, EhcNode *ehc_father, BfsNode *bfs_father
       }
     }
   }
+  
   if (S_num_path == -17)
   {
     printf("\n\nS_num_path wasn't set?\n\n");
@@ -1305,7 +1324,10 @@ void insert_path_implications(State *S, EhcNode *ehc_father, BfsNode *bfs_father
           printf("\n\n");
           exit(1);
         }
-      }
+      }/*
+        第一步 LU[0][0~num_U].ft = init_state->U[0!num_U]
+        初始化完，lpath_U_length ++ 就是左边 0->1
+      */
       lU[lpath_U_length][lnum_U[lpath_U_length]].ft = path[t]->U[i];
       lU[lpath_U_length][lnum_U[lpath_U_length]].became_F = FALSE;
       lU[lpath_U_length][lnum_U[lpath_U_length]++].num_in = 0;
@@ -1314,9 +1336,11 @@ void insert_path_implications(State *S, EhcNode *ehc_father, BfsNode *bfs_father
   }
 
   /* now, include the NOOPs
+      第一步，num_path+1 = MAX_PLAN_LENGTH
    */
   for (t = num_path + 1; t < MAX_PLAN_LENGTH; t++)
   {
+    /*第一步：time=0*/
     time = t - (num_path + 1); /* the time index of the lower state */
     for (i = 0; i < lnum_U[time]; i++)
     {
@@ -1899,12 +1923,14 @@ Bool append_new_U_layer(time)
         continue;
       }
     }
-
+    /*printf("\nUtime+1:%d --- i:%d \n",Utime+1,i);*/
     if (Uleaf_disjunction_implied_by_formula(Utime, &(lU[Utime + 1][i])))
     {
       /* hand result over to the rest of the fixpoint algorithm!
        */
       lU[Utime + 1][i].became_F = TRUE;
+      /*printf("\nLU %d %d 变成了true,\n",Utime+1,i);*/
+      
       new_fact(lU[Utime + 1][i].ft);
 
       new_U = TRUE;
@@ -2664,13 +2690,17 @@ Bool all_goals_activated(int time)
 void print_fixpoint_result(void)
 
 {
-
+  int k;
+  for(k=0;k<gnum_ef_conn;k++){
+    printf("当前的level：%d\n",gef_conn[k].level);
+  }
   int time, i, j, Utime;
   Bool hit, hit_F, hit_E, hit_U;
 
   printf("\n\n----------------------------relaxed plan graph");
 
   Utime = 0;
+  /*初始化完后lpath_U_length=1 0<0=false*/
   while (Utime < lpath_U_length - 1)
   {
     printf("\n\nU-LEVEL %d (ie Utime %d):", Utime - lpath_U_length + 1, Utime);
@@ -2874,15 +2904,18 @@ int extract_1P(int max, Bool H_info)
   gnum_H = 0;
 
   lh = 0;
+  
+  /*H改变printf("1lh:%d\n",lh);printf("2lh:%d\n",lh);printf("3lh:%d\n",lh);*/
   for (time = max_goal_level; time > 0; time--)
   {
     achieve_goals(time);
   }
+  
   if (H_info)
   {
     collect_H_info();
   }
-
+  
   return lh;
 }
 
@@ -2963,13 +2996,14 @@ int initialize_goals(int max)
 void achieve_goals(int time)
 
 {
-
+  
   int i, j, k, ft, min_p, min_e, ef, p, op, Utime;
 
   Utime = time + lpath_U_length - 1;
 
   for (i = 0; i < lnum_goals_at[time]; i++)
   {
+    
     ft = lgoals_at[time][i];
 
     if (gcmd_line.display_info == 123 || (gcmd_line.R && gcmd_line.debug))
@@ -3047,8 +3081,9 @@ void achieve_goals(int time)
         fflush(stdout);
         exit(1);
       }
+      /*H改变*/
       select_implied_incoming_paths(time, &(lU[Utime][j]));
-
+      
       continue;
     } /* min_e == -1 */
 
@@ -3076,6 +3111,7 @@ void achieve_goals(int time)
         gop_conn[op].is_used = TRUE;
       }
       gop_conn[op].is_used_at[time - 1] = TRUE;
+      /*printf("lh++\n");*/
       lh++;
       if (gcmd_line.display_info == 123 || (gcmd_line.R && gcmd_line.debug))
       {
@@ -3092,8 +3128,9 @@ void achieve_goals(int time)
         fflush(stdout);
       }
     }
-
+    
     introduce_ef_PC_and_A(time, ef);
+    
   } /* for all goals at time */
 }
 
@@ -3219,6 +3256,7 @@ void pathselect(int Utime, int ef)
       gop_conn[op].is_used = TRUE;
     }
     gop_conn[op].is_used_at[time - 1] = TRUE;
+    /*H改变*/
     lh++;
     if (gcmd_line.display_info == 123 || (gcmd_line.R && gcmd_line.debug))
     {
@@ -3616,6 +3654,7 @@ void select_implied_incoming_paths(int time, UftNode *n)
     fflush(stdout);
   }
 
+  /*printf("num_leafs:%d\n",num_leafs);*/
   if (gcmd_line.heuristic == 0 ||
       gcmd_line.heuristic == 1)
   {
@@ -3645,6 +3684,9 @@ void select_implied_incoming_paths(int time, UftNode *n)
     }
     fflush(stdout);
   }
+  /*启发式H的值在这里改变*/
+  /*num_min_leafs应该受到了or_inial影响printf("num_min_leafs:%d\n",num_min_leafs);*/
+  
   for (i = 0; i < num_min_leafs; i++)
   {
     if (leafs[min_leafs[i]] == ft)
@@ -3660,6 +3702,7 @@ void select_implied_incoming_paths(int time, UftNode *n)
       pathselect(pt[j] + 1, pef[j]);
     }
   }
+  /*printf("lhhhhhh:%d\n",lh);*/
 }
 
 /* **mindis and *num_min_dis are the outputs of the fn -- an array of ints and the nr
@@ -3691,6 +3734,7 @@ void get_minimal_disjunction_implied_by_initial_formula(int *dis, int num_dis, B
 
   /* first, see if two of the leafs are contradictory
    */
+  
   for (i = 0; i < num_dis; i++)
   {
     if (gft_conn[dis[i]].negation != -1 &&
@@ -3790,6 +3834,7 @@ void get_minimal_disjunction_implied_by_initial_formula(int *dis, int num_dis, B
    * NOTE: the clauses are sorted by increasing length, see start of this file.
    *       so we will find as short a clause as possible (if we find one).
    */
+  /*num_min_dis改变*/
   for (i = 0; i < lr_num_clauses; i++)
   {
     /* for each ini or
@@ -3836,7 +3881,7 @@ void get_minimal_disjunction_implied_by_initial_formula(int *dis, int num_dis, B
       return;
     }
   } /* all fixed clauses, ie ini ors */
-
+  
   /* if h == 0, and we get here, then something is wrong!!
    */
   if (gcmd_line.heuristic == 0)
@@ -3965,7 +4010,7 @@ void get_minimal_disjunction_implied_by_initial_formula(int *dis, int num_dis, B
         }
         curr_test_index++;
       }
-      else
+      else/*不满足SAT验证还要减少*/
       {
         if (gcmd_line.R && gcmd_line.debug >= 2)
         {
@@ -3992,6 +4037,7 @@ void get_minimal_disjunction_implied_by_initial_formula(int *dis, int num_dis, B
   {
     (*min_dis)[i] = cdis_to_dis[i];
   }
+  /*最后等于num_cdis*/
   (*num_min_dis) = num_cdis;
 }
 

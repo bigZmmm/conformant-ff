@@ -839,6 +839,13 @@ typedef struct _ActionEffect {
 
 } ActionEffect;
 
+typedef struct _PredicateString
+{
+  char *name;
+  int fact;
+  struct PredicateString *next;
+  /* data */
+}PredicateString;
 
 
 typedef struct _Action {
@@ -911,6 +918,7 @@ typedef struct _OpConn {
   /* members for 1Ph - H(S) extraction
    *
    * simple solution: static array size, in contrast to lgoals_at array in relax.c
+   * 看这个小动作是否已经被使用了
    */
   Bool is_used_at[RELAXED_STEPS];
   Bool is_used;
@@ -919,11 +927,12 @@ typedef struct _OpConn {
 } OpConn;
 
 
-
+/*这里的int都是映射的fact
+*/
 typedef struct _EfConn {
 
   int op;
-
+  
   /* op preconds + conds
    *
    * redundant with info below; keep that in from original FF
@@ -937,11 +946,13 @@ typedef struct _EfConn {
    */
   int *C;
   int num_C;
-
+  /* add集合，bool是确定为非确定的动作
+  */
   int *A;
   Bool *A_nondet;
   int num_A;
-
+  /* del集合，bool是确定为非确定的动作
+  */
   int *D;
   Bool *D_nondet;
   int num_D;
@@ -950,7 +961,8 @@ typedef struct _EfConn {
    */
   int *I;
   int num_I;
-
+  /* 不知道这个removed是什么意思
+  */
   Bool removed;
 
   /* members for relaxed fixpoint computation
@@ -963,30 +975,36 @@ typedef struct _EfConn {
 } EfConn;
 
 
-
+/* poss U: 0, CNF: 1目前不知道是什么意思
+*/
 typedef struct _FtConn {
 
   /* its negation; the resp ft number if it is translated,
    * otherwise -1
+   存储这个的反例子
    */
   int negation;
 
   /* ops it is precond of -> get_A
+     动作的前置条件
    */
   int *P;
   int num_P;
 
   /* effects it is union conds, pres element of
+     作用的前置条件
    */
   int *PC;
   int num_PC;
 
   /* efs it is cond of -> figure will need this for relaxed plans
+   条件
    */
   int *C;
   int num_C;
 
   /* efs that add or del it
+    对应于影响
    */
   int *A;
   Bool *A_nondet;/* is this effect nondet? */
@@ -1001,6 +1019,7 @@ typedef struct _FtConn {
   int num_False;
 
   /* members for relaxed fixpoint computation
+    in_F = true是放松固定点计划中的一个fact
    */
   int level;
   Bool in_F;
@@ -1137,6 +1156,7 @@ typedef struct _State {
    *
    * these are, in difference to the F facts above, allocated
    * statically, ie always with the max possible number
+   * 静态分布，总有最大的可能数量
    * -- assuming that the nr of unknown facts will not be critically 
    *    high in itself.
    */

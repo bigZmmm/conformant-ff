@@ -57,6 +57,13 @@
   "C_Cpp_Runner.useLinkTimeOptimization": false,
   "C_Cpp_Runner.msvcSecureNoWarnings": false,
   "files.associations": {
-    "inst_final.h": "c"
+    "inst_final.h": "c",
+    "ff.h": "c",
+    "output.h": "c",
+    "z3.h": "c",
+    "extract_counterexample.h": "c",
+    "setjmp.h": "c",
+    "stdio.h": "c",
+    "stdlib.h": "c"
   }
 }

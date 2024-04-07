@@ -120,6 +120,8 @@ void encode_domain_in_integers(void)
     printf("\n\nfirst step operators are:");
     for (i = 0; i < gnum_operators; i++)
     {
+      /*printf("操作数目 %d\n",gnum_operators);*/
+      
       print_Operator(goperators[i]);
     }
     printf("\n\n");
@@ -941,6 +943,7 @@ void do_inertia_preprocessing_step_1(void)
   if (gcmd_line.display_info == 106)
   {
     printf("\n\nsplitted initial state is:");
+    /*开局为真的为谓语*/
     printf("\nindividual predicates, known parts:");
     for (i = 0; i < gnum_predicates; i++)
     {
@@ -957,6 +960,7 @@ void do_inertia_preprocessing_step_1(void)
         print_Fact(&(ginitial_predicate[i][j]));
       }
     }
+    /*开局未知的谓语*/
     printf("\nindividual predicates, unknown parts:");
     for (i = 0; i < gnum_predicates; i++)
     {
@@ -2214,10 +2218,13 @@ void translate_negative_preconds(void)
       print_Fact(f->fact);
     }
     printf("\ninitial state is, unknown part:\n");
+    /*修改。在这里修改初始状态*/
+    i=0;
     for (f = gunknown_initial; f; f = f->next)
     {
       printf("\n");
       print_Fact(f->fact);
+      i++;
     }
     printf("\ninitial state is, ors:\n");
     for (i = 0; i < gnum_full_or_initial; i++)
