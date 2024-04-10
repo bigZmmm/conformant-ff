@@ -943,7 +943,7 @@ void do_inertia_preprocessing_step_1(void)
   if (gcmd_line.display_info == 106)
   {
     printf("\n\nsplitted initial state is:");
-    /*开局为真的为谓语*/
+    /*谓语的状态不会随着规划而改变*/
     printf("\nindividual predicates, known parts:");
     for (i = 0; i < gnum_predicates; i++)
     {
@@ -960,7 +960,7 @@ void do_inertia_preprocessing_step_1(void)
         print_Fact(&(ginitial_predicate[i][j]));
       }
     }
-    /*开局未知的谓语*/
+    /*谓语状态会随着规划的前进而变化*/
     printf("\nindividual predicates, unknown parts:");
     for (i = 0; i < gnum_predicates; i++)
     {

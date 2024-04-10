@@ -822,7 +822,8 @@ int main( int argc, char *argv[] )
    ginitial_state.U[2] = ginitial_state.U[5];
    ginitial_state.U[3] = ginitial_state.U[6];
    */
-   print_state(ginitial_state);
+  /*测试输出*/
+  print_state(ginitial_state);
    
    
   
@@ -945,16 +946,16 @@ int main( int argc, char *argv[] )
   ginitial_state.num_F=1;
   ginitial_state.F[0]=10;
   */
-  /*
+  
   printf("/n输出初始状态");
   print_state(ginitial_state);
-  printf("maxF:%d\n",ginitial_state.max_F);
+ /* printf("maxF:%d\n",ginitial_state.max_F);
   printf("\n");
-
+*/
   printf("---------\n目标状态");
   print_state(ggoal_state);
   printf("\n");
-  printf("---------\n");*/
+  printf("---------\n");
   /*plan*/
     
   if ( gcmd_line.ehc ) {

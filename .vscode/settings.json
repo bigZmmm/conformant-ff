@@ -64,6 +64,7 @@
     "extract_counterexample.h": "c",
     "setjmp.h": "c",
     "stdio.h": "c",
-    "stdlib.h": "c"
+    "stdlib.h": "c",
+    "sstream": "c"
   }
 }

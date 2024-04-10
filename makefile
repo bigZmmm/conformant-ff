@@ -42,6 +42,7 @@ SOURCES 	= main.c \
 	state_transitions.c \
 	repeated_states.c \
 	extract_counterexample.c \
+	set.c
 
 
 OBJECTS 	= $(SOURCES:.c=.o)
