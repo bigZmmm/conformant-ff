@@ -1,3 +1,3 @@
 make clean
 make
-./ff -p /home/planner/Downloads/PlannerBenchmark-main/T1/Conformant/det/coins/ -o domain.pddl -p /home/planner/Downloads/PlannerBenchmark-main/T1/Conformant/det/coins/ -f p01.pddl 
+./ff -p /home/planner/Downloads/PlannerBenchmark-main/T1/Conformant/det/coins/ -o domain.pddl -p /home/planner/Downloads/PlannerBenchmark-main/T1/Conformant/det/coins/ -f p01.pddl -i 120
