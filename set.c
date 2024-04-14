@@ -65,6 +65,7 @@ int set_destroy(SimpleSet *set) {
 }
 
 int set_add(SimpleSet *set, const char *key) {
+    /*printf("112 %s\n",key);*/
     uint64_t hash = set->hash_function(key);
     return __set_add(set, key, hash);
 }

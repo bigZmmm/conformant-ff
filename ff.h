@@ -1793,13 +1793,15 @@ extern MemberList_pointer *gneg_c_in_clause_start;
 extern MemberList_pointer *gneg_c_in_clause_fixed;
 extern MemberList_pointer *gneg_c_in_clause_end;
 
-
-
 /* automatically checked Bool saying if sufficient criteria for
  * "more facts are always better" holds.
  */
 extern Bool gdomination_valid;
 
-
+/*存储有等价fact的fact*/
+extern int neg_fact[10000];
+/*用于对neg_fact的添加的去重*/
+extern Bool fact_unuse_zero[10000];
+extern Bool fact_step[10000];
 
 #endif __FF_H

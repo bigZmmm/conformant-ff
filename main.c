@@ -559,9 +559,11 @@ MemberList_pointer *gneg_c_in_clause_end;
 Bool gdomination_valid;
 
 
-
-
-
+/*存储有等价fact的fact*/
+int neg_fact[10000]={0};
+/*用于对neg_fact的添加的去重*/
+Bool fact_unuse_zero[10000]={0};
+Bool fact_step[10000]={0};
 
 
 
@@ -983,6 +985,12 @@ int main( int argc, char *argv[] )
 
   printf("\n\n");
   conputerCounter();
+  /*测试neg_string每次迭代的重置*/
+  /*
+  for(i=0;i<=3;i++){
+    test111(i);
+  }
+  */
   exit( 0 );
 
 }

@@ -2022,6 +2022,12 @@ void build_connectivity_graph(void)
     ginitial_or[0][0] = ginitial_or[0][3];
     ginitial_or[0][1] = ginitial_or[0][4];
     */
+  for (i = 0; i < gnum_initial_equivalence; i++)
+  {
+    /*初始化等价set*/
+    neg_fact[ginitial_equivalence_notA[i]]=i+1;
+
+  }
   if (gcmd_line.display_info == 121)
   {
     printf("\n\ncreated connectivity graph as follows:");
@@ -2145,6 +2151,8 @@ void build_connectivity_graph(void)
       print_ft_name(ginitial_equivalence_A[i]);
       printf(" <-> ");
       print_ft_name(ginitial_equivalence_notA[i]);
+
+      /*初始化等价set*/
     }
     
     
