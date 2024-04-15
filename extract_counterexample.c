@@ -83,6 +83,44 @@ Z3_context mk_context()
 }
 
 /*end-Z3*/
+int extractFinalNum(char *var){
+  // printf("\nvar: %s",var);
+  int num=0,ten=1,len=strlen(var),i;
+  for(i=len-1;i>=0;i--){
+    if(var[i]=='-')
+      break;
+    num = ten*(var[i]-48)+ num;
+    ten*=10;
+  }
+  return num;
+}
+
+int extractFinalSeconNum(char *var){
+  int num=0,ten=1,len=strlen(var),i;
+  while(var[len-1]!='-'){
+    len--;
+  }
+  len--;
+  for(i=len-1;i>=0;i--){
+    if(var[i]=='-')
+      break;
+    num = ten*(var[i]-48)+ num;
+    ten*=10;
+  }
+  return num;
+}
+
+
+char* contactString(char *now,char *add){
+    int total_length = strlen(add) + strlen(now)+2;
+    char *new_var = (char*)calloc(total_length,sizeof(char));
+    strcat(new_var,now);
+    strcat(new_var," ");
+    strcat(new_var,add);
+    free(now);
+    /*printf("\n%s\n",new_var);*/
+    return new_var;
+}
 
 char* itoa(int num,char* str,int radix)
 {
@@ -143,8 +181,12 @@ char *Fact2SmtString(int i)
     }
   }
   /*printf("\n%s\n",tmp);*/
-  name = (char *)malloc(strlen(tmp) + 1);
+  name = (char *)malloc(strlen(tmp) + 1+10);
   strcpy(name, tmp);
+  char *fact_num = (char*)calloc(20,sizeof(char));
+  itoa(i,fact_num,10);
+  strcat(name,"-");
+  strcat(name,fact_num);
   return name;
 }
 
@@ -154,16 +196,6 @@ void addToNgoal(int *newgoal,int index){
   }
 }
 
-char* contactString(char *now,char *add){
-    int total_length = strlen(add) + strlen(now)+2;
-    char *new_var = (char*)calloc(total_length,sizeof(char));
-    strcat(new_var,now);
-    strcat(new_var," ");
-    strcat(new_var,add);
-    free(now);
-    /*printf("\n%s\n",new_var);*/
-    return new_var;
-}
 
 char* toSmtVariableString(char *now,int timestep){
   char *str=(char *)calloc(20,sizeof(char));
@@ -205,7 +237,7 @@ void assert_Neg(int cur_fact,int timestep,SimpleSet *regre_variable){
 
 
 void addAction2Goal(char **simulation,char **preference,int current_goal_fact,Action *a,int new_len,SimpleSet *regre_variable,int *new_goal,int timestep){
-    print_ft_name(current_goal_fact);
+    /*print_ft_name(current_goal_fact);*/
     addToNgoal(new_goal,current_goal_fact);
     int i,e;
     char *fact2string = toSmtVariableString(Fact2SmtString(current_goal_fact),timestep);
@@ -392,6 +424,88 @@ Bool test111(int i){
   printf("\n%s %d %d\n",neg_assert,strlen(neg_assert),neg_assert[0]);
 }
 
+
+int extractCounter(Z3_context ctx,Z3_model m,int *ce){
+    unsigned num_constants;
+    unsigned i;
+    if (!m) return;
+    int celen = 0;
+    num_constants = Z3_model_get_num_consts(ctx, m);
+    for (i = 0; i < num_constants; i++) {
+        Z3_symbol name;
+        Z3_func_decl cnst = Z3_model_get_const_decl(ctx, m, i);
+        Z3_ast a, v;
+        bool ok;
+        /*获取变量名*/
+        name = Z3_get_decl_name(ctx, cnst);
+        char *nowvar =(char*)calloc(1000,sizeof(char)); 
+        
+        strcat(nowvar,Z3_get_symbol_string(ctx, name));
+        // strcat(nowvar,"not-ine1f1-1231-0");
+        /*获取真值*/
+        a = Z3_mk_app(ctx, cnst, 0, 0);
+        v = a;
+        ok = Z3_model_eval(ctx, m, a, 1, &v);
+        
+        char *istrue = Z3_ast_to_string(ctx,v);
+        
+        int step = extractFinalNum(nowvar);
+        
+        // printf("\n%d %s",step,istrue);
+        // printf("%d\n",strcmp(istrue,"true"));
+        if((strcmp(istrue,"true")==0)&&step==0){
+            int factnum = extractFinalSeconNum(nowvar);
+            ce[factnum]=1;
+            celen++;
+            // printf("\nfact:%d %d\n",factnum,celen);
+        }
+        // else
+        //   printf("\nfalse\n");
+    }
+  return celen;
+}
+
+void addCounter(int *ce,int celen){
+  int i,j;
+
+  /*对ginitial_fact进行插入*/
+  for(i=0;i<ginitial_state_old.num_F;i++){
+    if((ce[ginitial_state_old.F[i]]==1)&&(contains_ginitial_state.F[i]!=-1)){
+      contains_ginitial_state.F[i]=1;
+      contains_ginitial_state.num_F++;
+    }
+  }
+  for(i=0;i<ginitial_state_old.num_U;i++){
+    if((ce[ginitial_state_old.U[i]]==1)&&(contains_ginitial_state.U[i]!=-1)){
+      contains_ginitial_state.U[i]=1;
+      contains_ginitial_state.num_U++;
+    }
+  }
+  for(i=0;i<ginitial_state_old.num_unknown_E;i++){
+    if((ce[ginitial_state_old.unknown_E[i]]==1)&&(contains_ginitial_state.unknown_E[i]!=-1)){
+      contains_ginitial_state.unknown_E[i]=1;
+      contains_ginitial_state.num_unknown_E++;
+    }
+  }
+  
+
+  /*对or进行添加*/
+  for (i = 0; i < gnum_initial_or_old; i++)
+  {
+    for (j = 0; j < ginitial_or_length_old[i]; j++)
+    {
+      if(ce[ginitial_or_old[i][j]]==1&&contains_ginitial_or[i][j]==-1){
+        contains_ginitial_or[i][j]=1;
+        contains_ginitial_or_length++;
+      }
+    }
+  }
+
+  /*更新初始集合*/
+
+}
+
+
 /*
   (一)、初始化 初始状态谓语为smt变量
   (二)、根据plan对目标状态所有的谓语进行回溯，过程中每步的表示都要按照步数进行标注，得到对应的assert
@@ -404,7 +518,7 @@ Bool test111(int i){
   (六)、进行sat验证，如果有反例，将反例保存到一个int数组中
   注意：谓语的最大上限为10000，超出会报错
 */
-Bool conputerCounter()
+Bool conputerCounter(int *ce,int *celen)
 {
   /*每次迭代，neg的哈希表要重置*/
   memset(fact_unuse_zero,0,10000);
@@ -439,8 +553,8 @@ Bool conputerCounter()
   {
     set_add(&variables,toSmtVariableString(Fact2SmtString(ginitial_state.U[i]),0));
     /*对第0步的neg针对处理*/
-    print_ft_name(ginitial_state.U[i]);
-    printf(" %d\n",ginitial_state.U[i]);
+    /*print_ft_name(ginitial_state.U[i]);
+    printf(" %d\n",ginitial_state.U[i]);*/
     if(neg_fact[ginitial_state.U[i]]!=0){
       assert_Neg(ginitial_state.U[i],0,&variables);
     }
@@ -465,23 +579,25 @@ Bool conputerCounter()
   for(i=0;i<ggoal_state.num_F;i++){
     current_goal_fact[i]=ggoal_state.F[i];
     preference=contactString(preference,toSmtVariableString(Fact2SmtString(ggoal_state.F[i]),timestep));
+    set_add(&variables,toSmtVariableString(Fact2SmtString(ggoal_state.F[i]),timestep));
   }
   for(i=0;i<ggoal_state.num_U;i++){
     current_goal_fact[ggoal_state.num_F+i]=ggoal_state.U[i];
     preference=contactString(preference,toSmtVariableString(Fact2SmtString(ggoal_state.U[i]),timestep));
+    set_add(&variables,toSmtVariableString(Fact2SmtString(ggoal_state.U[i]),timestep));
   }
   
   /*当前目标状态ggoal_state
   对目标状态进行回归，得到回归assert*/
   int new_goal[10005]={0};
   for (i = timestep-1; i >=0; i--)
-  {
+  {   /*
       printf("\n%d :",i);
       print_op_name( gplan_ops[i] );
+      */
       Action *a = gop_conn[gplan_ops[i]].action;
       int new_len=0;
-      for(j=0;j<goal_len;j++){
-          
+      for(j=0;j<goal_len;j++){        
           addAction2Goal(&simulation,&preference,current_goal_fact[j],a,&new_len,&variables,new_goal,i+1);
       }
       /*对当前需要回归的fact进行记录*/
@@ -605,36 +721,51 @@ Bool conputerCounter()
   Z3_solver s;
   cfg = Z3_mk_config();
   Z3_set_param_value(cfg, "model", "true");
-  ctx= Z3_mk_context_rc(cfg);
+  ctx = Z3_mk_context(cfg);
+  Z3_set_error_handler(ctx, error_handler);
+  Z3_del_config(cfg);
   s= mk_solver(ctx);
+
   Z3_ast_vector f = Z3_parse_smtlib2_string(ctx,
                                /* the following string has a parsing error: missing parenthesis */
                               final_smt,
                                0, 0, 0,
                                0, 0, 0);
   /*printf("formula: %s\n", Z3_ast_vector_to_string(ctx, f));*/
+  /*加入所有的断言*/
+  int n = Z3_ast_vector_size(ctx,f);
+  printf("\n%d\n",n);
+  for(i=0;i<n;i++)
+    Z3_solver_assert(ctx, s, Z3_ast_vector_get(ctx,f,i));
   
+  /*提取反例*/
   Z3_model m      = 0;
   Z3_lbool result = Z3_solver_check(ctx, s);
   printf("\n%d\n",result);
   switch (result) {
+    /*未找到反例*/
     case Z3_L_FALSE:
         printf("unsat\n");
-        break;
+        return false;
     case Z3_L_UNDEF:
         printf("unknown\n");
         m = Z3_solver_get_model(ctx, s);
         if (m) Z3_model_inc_ref(ctx, m);
         printf("potential model:\n%s\n", Z3_model_to_string(ctx, m));
         break;
+    /*找到反例*/
     case Z3_L_TRUE:
         m = Z3_solver_get_model(ctx, s);
         if (m) Z3_model_inc_ref(ctx, m);
-        printf("sat\n%s\n", Z3_model_to_string(ctx, m));
+        char *counter = Z3_model_to_string(ctx, m);
+        printf("\n%s\n",counter);
+        *celen = extractCounter(ctx,m,ce);
         break;
   }
+  Z3_solver_dec_ref(ctx, s);
+  Z3_del_context(ctx);
 
-  return success; 
+  return true; 
 }
 
 

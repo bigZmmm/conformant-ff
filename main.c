@@ -381,7 +381,7 @@ int gnum_pp_facts = 0;
  */
 Action *gactions;
 int gnum_actions;
-State ginitial_state;
+
 State ggoal_state;
 /* initially valid implications
  */
@@ -392,6 +392,9 @@ int gnum_initial_equivalence;
  */
 int gmax_E;
 
+/* 下面的初始状态和初始or当作反例
+  */
+State ginitial_state;
 /* the initial OR constraints in final coding
  */
 int **ginitial_or;
@@ -399,11 +402,22 @@ int *ginitial_or_length;
 int gnum_initial_or;
 
 
+/* 存储反例子相关数据
+ */
 
-
-
-
-
+/*副本*/
+State ginitial_state_old;
+int **ginitial_or_old;
+int *ginitial_or_length_old;
+int gnum_initial_or_old;
+/*判断是否在初始反例集中*/
+State contains_ginitial_state;
+int **contains_ginitial_or;
+int *contains_ginitial_or_length;
+int contains_gnum_initial_or;
+/*判断是否是U中的，或者是否是or中的*/
+Bool inUfact[10000]={0};
+Bool inOrfact[10000]={0};
 
 /**********************
  * CONNECTIVITY GRAPH *
@@ -730,6 +744,8 @@ int main( int argc, char *argv[] )
   /*将domain中的字符串编辑为数字，用表来映射*/
   /*同时将第一步时候的状态以及动作的条件按照这个数字表保存*/
   /*这一步将常量、谓语、动作存储到表中*/
+  
+  /*这里还是初始的oneof*/
   encode_domain_in_integers();
 
   /* inertia preprocessing, first step:
@@ -809,7 +825,11 @@ int main( int argc, char *argv[] )
     这里的init初始状态是未知的
     而寻找要改成已知的
    */
+  
+  /*形成最终结果*/
   collect_relevant_facts();
+
+
   /*Action *a;
   for(a = gactions;a;a=a->next){
     print_Action(a);
@@ -824,8 +844,7 @@ int main( int argc, char *argv[] )
    ginitial_state.U[2] = ginitial_state.U[5];
    ginitial_state.U[3] = ginitial_state.U[6];
    */
-  /*测试输出*/
-  print_state(ginitial_state);
+  
    
    
   
@@ -840,6 +859,9 @@ int main( int argc, char *argv[] )
      构建各个fact和effect之间的关系，以及哪些action会产生哪些effect（effect表示为删除哪些fact，加入哪些fact）
    */
   build_connectivity_graph();
+
+  /*测试输出*/
+  print_state(ginitial_state_old);
 
   times( &end );
   TIME( gconn_time );
@@ -959,32 +981,42 @@ int main( int argc, char *argv[] )
   printf("\n");
   printf("---------\n");
   /*plan*/
-    
-  if ( gcmd_line.ehc ) {
-    /*这个初始状态可以是样本，就是根据这个ginitial_state进行搜索plan*/
-    
-    found_plan = do_enforced_hill_climbing( &ginitial_state, &ggoal_state );
-  }
-  /*默认就是强制爬山和最佳优先搜索*/
-  if ( !found_plan ) {
+  {
       if ( gcmd_line.ehc ) {
-    printf("\n\nEnforced Hill-climbing failed !");
-    printf("\nswitching to Best-first Search now.\n");
+        /*这个初始状态可以是样本，就是根据这个ginitial_state进行搜索plan*/
+        
+        found_plan = do_enforced_hill_climbing( &ginitial_state, &ggoal_state );
       }
-    gnum_plan_ops = 0;
-    found_plan = do_best_first_search();
-  } 
+      /*默认就是强制爬山和最佳优先搜索*/
+      if ( !found_plan ) {
+          if ( gcmd_line.ehc ) {
+        printf("\n\nEnforced Hill-climbing failed !");
+        printf("\nswitching to Best-first Search now.\n");
+          }
+        gnum_plan_ops = 0;
+        found_plan = do_best_first_search();
+      } 
 
-  times( &end );
-  TIME( gsearch_time );
+      times( &end );
+      TIME( gsearch_time );
 
-  if ( found_plan ) {
-    print_plan();
+      if ( found_plan ) {
+        print_plan();
+      }
+      output_planner_info();
+      /*存储反例*/
+      int *ce = (int*)calloc(10000,sizeof(int));
+      memset(ce,0,10000);
+      int celen=0;
+      if(conputerCounter(ce,&celen)){
+          for(i=0;i<celen;i++)
+            printf("\n%d\n",ce[i]);
+      }else{
+        printf("没有反例，找到最终解！\n");
+      }
   }
-  output_planner_info();
-
   printf("\n\n");
-  conputerCounter();
+  
   /*测试neg_string每次迭代的重置*/
   /*
   for(i=0;i<=3;i++){

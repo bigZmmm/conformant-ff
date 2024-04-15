@@ -338,6 +338,7 @@ void perform_reachability_analysis(void)
 
   if (gcmd_line.display_info == 118)
   {
+
     printf("\nreachability analysys came up with:");
 
     printf("\n\npossibly positive facts:");
@@ -2028,6 +2029,78 @@ void build_connectivity_graph(void)
     neg_fact[ginitial_equivalence_notA[i]]=i+1;
 
   }
+   /*从这里开始，修改反例*/
+  for (i = 0; i < gnum_initial_or; i++)
+    {
+      printf("\nOR: ");
+      for (j = 0; j < ginitial_or_length[i]; j++)
+      {
+        print_ft_name(ginitial_or[i][j]);
+        printf(" ");
+      }
+    }
+  /* 存档一个or和initial_state的数据，包括构建一个判断or和initial_state中fact是否存在的bool表
+     对于bool or，只是每个or的长度设置为0
+     对于bool initial，每个类型fact都设置为0
+    */
+  /*存档or*/
+  gnum_initial_or_old = gnum_initial_or;
+  contains_ginitial_or = gnum_initial_or;
+  
+  ginitial_or_old = (int **)calloc(gnum_initial_or, sizeof(int *));
+  ginitial_or_length_old = (int *)calloc(gnum_initial_or, sizeof(int));
+  contains_ginitial_or = (int **)calloc(gnum_initial_or, sizeof(int *));
+  contains_ginitial_or_length = (int *)calloc(gnum_initial_or, sizeof(int));
+
+  for (i = 0; i < gnum_initial_or; i++)
+  {
+    ginitial_or_length_old[i] = ginitial_or_length[i];
+    contains_ginitial_or_length[i] = 0;
+    ginitial_or_old[i] = (int *)calloc(ginitial_or_length[i], sizeof(int));
+    
+    contains_ginitial_or[i] = (int *)calloc(ginitial_or_length[i], sizeof(int));
+    for (j = 0; j < ginitial_or_length[i]; j++)
+    {
+      ginitial_or_old[i][j] = ginitial_or[i][j];
+      contains_ginitial_or[i][j] = -1;
+      /*设置一个是否是or中的set*/
+      inOrfact[ginitial_or[i][j]]=1;
+    }
+  }
+  /*存档initial_state*/
+  ginitial_state_old.max_F = ginitial_state.max_F;
+  ginitial_state_old.num_F = ginitial_state.num_F; 
+  ginitial_state_old.num_U = ginitial_state.num_U;
+  ginitial_state_old.num_unknown_E = ginitial_state.num_unknown_E;
+  ginitial_state_old.F = (int *)calloc(ginitial_state_old.num_F,sizeof(int)+5);
+  ginitial_state_old.U = (int *)calloc(ginitial_state_old.num_U,sizeof(int)+5);
+  ginitial_state_old.unknown_E = (int *)calloc(ginitial_state_old.num_unknown_E,sizeof(int)+5);
+  for(i=0;i<ginitial_state_old.num_F;i++)
+    ginitial_state_old.F[i] = ginitial_state.F[i];
+  for(i=0;i<ginitial_state_old.num_U;i++){
+    ginitial_state_old.U[i] = ginitial_state.U[i];
+    /*设置一个是否是U中的set*/
+    inUfact[ginitial_state.U[i]]=1;
+  }
+    
+  for(i=0;i<ginitial_state_old.num_unknown_E;i++)
+    ginitial_state_old.unknown_E[i] = ginitial_state.unknown_E[i];
+  /*存档initial_state的bool集*/
+  contains_ginitial_state.max_F = 0;
+  contains_ginitial_state.num_F = 0; 
+  contains_ginitial_state.num_U = 0;
+  contains_ginitial_state.num_unknown_E = ginitial_state.num_unknown_E;
+  contains_ginitial_state.F = (int *)calloc(ginitial_state_old.num_F,sizeof(int)+5);
+  contains_ginitial_state.U = (int *)calloc(ginitial_state_old.num_U,sizeof(int)+5);
+  contains_ginitial_state.unknown_E = (int *)calloc(ginitial_state_old.num_unknown_E,sizeof(int)+5);
+  for(i=0;i<ginitial_state_old.num_F;i++)
+    contains_ginitial_state.F[i] = -1;
+  for(i=0;i<ginitial_state_old.num_U;i++){
+    contains_ginitial_state.U[i] = -1;
+    /*设置一个是否是U中的set*/
+  }
+
+
   if (gcmd_line.display_info == 121)
   {
     printf("\n\ncreated connectivity graph as follows:");
@@ -2155,8 +2228,11 @@ void build_connectivity_graph(void)
       /*初始化等价set*/
     }
     
+    // ginitial_or[gnum_initial_or] = (int *)calloc(k, sizeof(int));
+    // ginitial_or[gnum_initial_or] = (int *)calloc(2, sizeof(int));
     
-    
+  
+
     printf("\n\n----------------------INITIAL ORS:-----------------------------");
     for (i = 0; i < gnum_initial_or; i++)
     {
@@ -2167,6 +2243,7 @@ void build_connectivity_graph(void)
         printf(" ");
       }
     }
+
     /*修改or*/
     
 

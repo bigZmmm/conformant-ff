@@ -1623,6 +1623,9 @@ extern int gnum_pp_facts;
 extern Action *gactions;
 extern int gnum_actions;
 extern State ginitial_state;
+/*反例存储*/
+extern State ginitial_state_old;
+
 extern State ggoal_state;
 /* to access initially valid implications: the translated facts.
  */
@@ -1638,11 +1641,18 @@ extern int **ginitial_or;
 extern int *ginitial_or_length;
 extern int gnum_initial_or;
 
+extern int **ginitial_or_old;
+extern int *ginitial_or_length_old;
+extern int gnum_initial_or_old;
 
+/*判断是否在初始反例集中*/
+extern State contains_ginitial_state;
+extern int **contains_ginitial_or;
+extern int *contains_ginitial_or_length;
+extern int contains_gnum_initial_or;
 
-
-
-
+extern Bool inUfact[10000];
+extern Bool inOrfact[10000];
 
 
 /**********************
