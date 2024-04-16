@@ -1651,9 +1651,9 @@ extern int **contains_ginitial_or;
 extern int *contains_ginitial_or_length;
 extern int contains_gnum_initial_or;
 
-extern Bool inUfact[10000];
+extern Bool isadd2Ufact[10000];
 extern Bool inOrfact[10000];
-
+Bool isadd2Ffact[10000];
 
 /**********************
  * CONNECTIVITY GRAPH *

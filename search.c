@@ -90,7 +90,7 @@ Bool do_enforced_hill_climbing(State *start, State *end)
   static Bool first_call = TRUE;
   static State S, S_;
   int i, h, h_;
-
+  first_call=TRUE;
   if (first_call)
   {
     /* on first call, initialize plan hash table, search space, search hash table
@@ -409,7 +409,7 @@ Bool do_best_first_search(void)
 
   static Bool fc = TRUE;
   static State S;
-
+  fc = TRUE;
   BfsNode *first;
   int i, min = INFINITY;
   Bool start = TRUE;

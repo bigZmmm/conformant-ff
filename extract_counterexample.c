@@ -465,24 +465,65 @@ int extractCounter(Z3_context ctx,Z3_model m,int *ce){
   return celen;
 }
 
+void initGinitiaState(){
+  int i,j;
+  /*初始化ginitial_state*/
+  ginitial_state.num_F = 0; 
+  ginitial_state.num_U = 0;
+  ginitial_state.num_unknown_E = 0;
+  /*初始化or*/
+  gnum_initial_or = 0;
+  for (i = 0; i < gnum_initial_or_old; i++)
+  {
+    ginitial_or_length[i] = 0;
+    memset(ginitial_or[i],0,ginitial_or_length_old[i]);
+  }
+  /*初始化两个是否已添加表*/
+  memset(isadd2Ffact,0,10000);
+  memset(isadd2Ufact,0,10000);
+  /*初始化plan为空*/
+  gnum_plan_ops=0;
+  memset(gplan_ops,0,MAX_PLAN_LENGTH);
+}
+
+void addNewOr(int index){
+  int i;
+  if(ginitial_or_length_old[gnum_initial_or]<contains_ginitial_or_length[index])
+    ginitial_or[gnum_initial_or] = (int *)realloc(ginitial_or[gnum_initial_or], contains_ginitial_or_length[index]+5);
+  // ginitial_or_length[gnum_initial_or] = contains_ginitial_or_length[index];
+  for(i=0;i<ginitial_or_length_old[index];i++){
+    if(contains_ginitial_or[index][i]==1){
+      /*添加进or中*/
+      ginitial_or[gnum_initial_or][ginitial_or_length[gnum_initial_or]++]=ginitial_or_old[index][i];
+      /*添加进初始状态的U中，判断这个U是否已经添加*/
+      if(isadd2Ufact[ginitial_or_old[index][i]]==0){
+        ginitial_state.U[ginitial_state.num_U++]=ginitial_or_old[index][i];
+        isadd2Ufact[ginitial_or_old[index][i]]=1;
+      }
+    }
+  }
+  gnum_initial_or++;
+} 
+
+
 void addCounter(int *ce,int celen){
   int i,j;
-
+  initGinitiaState();
   /*对ginitial_fact进行插入*/
   for(i=0;i<ginitial_state_old.num_F;i++){
-    if((ce[ginitial_state_old.F[i]]==1)&&(contains_ginitial_state.F[i]!=-1)){
+    if((ce[ginitial_state_old.F[i]]==1)&&(contains_ginitial_state.F[i]==0)){
       contains_ginitial_state.F[i]=1;
       contains_ginitial_state.num_F++;
     }
   }
   for(i=0;i<ginitial_state_old.num_U;i++){
-    if((ce[ginitial_state_old.U[i]]==1)&&(contains_ginitial_state.U[i]!=-1)){
+    if((ce[ginitial_state_old.U[i]]==1)&&(contains_ginitial_state.U[i]==0)){
       contains_ginitial_state.U[i]=1;
       contains_ginitial_state.num_U++;
     }
   }
   for(i=0;i<ginitial_state_old.num_unknown_E;i++){
-    if((ce[ginitial_state_old.unknown_E[i]]==1)&&(contains_ginitial_state.unknown_E[i]!=-1)){
+    if((ce[ginitial_state_old.unknown_E[i]]==1)&&(contains_ginitial_state.unknown_E[i]==1)){
       contains_ginitial_state.unknown_E[i]=1;
       contains_ginitial_state.num_unknown_E++;
     }
@@ -494,14 +535,53 @@ void addCounter(int *ce,int celen){
   {
     for (j = 0; j < ginitial_or_length_old[i]; j++)
     {
-      if(ce[ginitial_or_old[i][j]]==1&&contains_ginitial_or[i][j]==-1){
+      if(ce[ginitial_or_old[i][j]]==1&&contains_ginitial_or[i][j]==0){
         contains_ginitial_or[i][j]=1;
-        contains_ginitial_or_length++;
+        contains_ginitial_or_length[i]++;
       }
     }
   }
 
   /*更新初始集合*/
+  /*首先对初始状态的更新*/
+  for(i=0;i<ginitial_state_old.num_F;i++){
+    if(contains_ginitial_state.F[i]==1){
+      ginitial_state.F[ginitial_state.num_F++] = ginitial_state_old.F[i];
+      isadd2Ffact[ginitial_state_old.F[i]]=1;
+    }
+  }
+  for(i=0;i<ginitial_state_old.num_U;i++){
+    if(contains_ginitial_state.U[i]==1&&(inOrfact[ginitial_state_old.U[i]]==0)){
+      ginitial_state.U[ginitial_state.num_U++] = ginitial_state_old.U[i];
+      isadd2Ufact[ginitial_state_old.F[i]]=1;
+    }
+  }
+  for(i=0;i<ginitial_state_old.num_unknown_E;i++){
+    if(contains_ginitial_state.unknown_E[i]==1){
+      ginitial_state.unknown_E[ginitial_state.num_unknown_E++] = ginitial_state_old.unknown_E[i];
+    }
+  }
+
+  /*对or进行更新，同时更新对应的初始状态集*/
+  for (i = 0; i < gnum_initial_or_old; i++)
+  {
+    for (j = 0; j < ginitial_or_length_old[i]; j++)
+    {
+      if(contains_ginitial_or_length[i]==1&&contains_ginitial_or[i][j]==1){
+        /*判断这个F是否已经添加*/
+        if(isadd2Ffact[ginitial_or_old[i][j]]==0){
+          ginitial_state.F[ginitial_state.num_F++]=ginitial_or_old[i][j];
+          isadd2Ffact[ginitial_or_old[i][j]]=1;
+        }
+        break;
+      }else if(contains_ginitial_or_length[i]>1){
+        addNewOr(i);
+        break;
+      }
+    }
+  }
+
+
 
 }
 
@@ -541,22 +621,22 @@ Bool conputerCounter(int *ce,int *celen)
   set_init(&variables);
   /*(一)*/
   /*添加所有初始状态谓语，下方实现了*/
-  for (i = 0; i < ginitial_state.num_F; i++)
+  for (i = 0; i < ginitial_state_old.num_F; i++)
   {
-    set_add(&variables,toSmtVariableString(Fact2SmtString(ginitial_state.F[i]),0));
+    set_add(&variables,toSmtVariableString(Fact2SmtString(ginitial_state_old.F[i]),0));
     /*对第0步的neg针对处理*/
-    if(neg_fact[ginitial_state.F[i]]!=0){
-      assert_Neg(ginitial_state.F[i],0,&variables);
+    if(neg_fact[ginitial_state_old.F[i]]!=0){
+      assert_Neg(ginitial_state_old.F[i],0,&variables);
     }
   }
-  for (i = 0; i < ginitial_state.num_U; i++)
+  for (i = 0; i < ginitial_state_old.num_U; i++)
   {
-    set_add(&variables,toSmtVariableString(Fact2SmtString(ginitial_state.U[i]),0));
+    set_add(&variables,toSmtVariableString(Fact2SmtString(ginitial_state_old.U[i]),0));
     /*对第0步的neg针对处理*/
     /*print_ft_name(ginitial_state.U[i]);
     printf(" %d\n",ginitial_state.U[i]);*/
-    if(neg_fact[ginitial_state.U[i]]!=0){
-      assert_Neg(ginitial_state.U[i],0,&variables);
+    if(neg_fact[ginitial_state_old.U[i]]!=0){
+      assert_Neg(ginitial_state_old.U[i],0,&variables);
     }
   }
 
@@ -618,20 +698,20 @@ Bool conputerCounter(int *ce,int *celen)
   strcat(init_smt,"(assert (AND");
   int factset[10000]={0};
   /*对存在于or中的fact在set中记录，不重复添加*/
-  for (i = 0; i < gnum_initial_or; i++)
+  for (i = 0; i < gnum_initial_or_old; i++)
   {
-    for (j = 0; j < ginitial_or_length[i]; j++)
+    for (j = 0; j < ginitial_or_length_old[i]; j++)
     {
-      factset[ginitial_or[i][j]]=1;
+      factset[ginitial_or_old[i][j]]=1;
     }
   }
   /*printf("/n输出初始状态");
   print_state(ginitial_state);*/
   
   /*先将fact中非or部分加入*/
-  for(i=0;i<ginitial_state.num_F;i++){
-      if(factset[ginitial_state.F[i]]!=1){
-          char *tmp = toSmtVariableString(Fact2SmtString(ginitial_state.F[i]),0);
+  for(i=0;i<ginitial_state_old.num_F;i++){
+      if(factset[ginitial_state_old.F[i]]!=1){
+          char *tmp = toSmtVariableString(Fact2SmtString(ginitial_state_old.F[i]),0);
           init_smt=contactString(init_smt, tmp);    
           init_smt=contactString(init_smt, "\n");
           if(set_add(&variables, tmp)){
@@ -639,9 +719,9 @@ Bool conputerCounter(int *ce,int *celen)
           }
       }
   }
-  for(i=0;i<ginitial_state.num_U;i++){
-      if(factset[ginitial_state.U[i]]!=1){
-          char *tmp = toSmtVariableString(Fact2SmtString(ginitial_state.U[i]),0);
+  for(i=0;i<ginitial_state_old.num_U;i++){
+      if(factset[ginitial_state_old.U[i]]!=1){
+          char *tmp = toSmtVariableString(Fact2SmtString(ginitial_state_old.U[i]),0);
           init_smt=contactString(init_smt, tmp);    
           init_smt=contactString(init_smt, "\n");  
           if(set_add(&variables, tmp)){
@@ -651,13 +731,13 @@ Bool conputerCounter(int *ce,int *celen)
   } 
 
   /*再将所有的or添加进来*/
-  for (i = 0; i < gnum_initial_or; i++)
+  for (i = 0; i < gnum_initial_or_old; i++)
   {
     char *or_smt = (char*)calloc(1,sizeof("(OR"));
     strcat(or_smt,"(OR");
-    for (j = 0; j < ginitial_or_length[i]; j++)
+    for (j = 0; j < ginitial_or_length_old[i]; j++)
     {
-      char *tmp = toSmtVariableString(Fact2SmtString(ginitial_or[i][j]),0);
+      char *tmp = toSmtVariableString(Fact2SmtString(ginitial_or_old[i][j]),0);
       or_smt=contactString(or_smt, tmp);
       if(set_add(&variables, tmp)){
         free(tmp);
@@ -751,14 +831,14 @@ Bool conputerCounter(int *ce,int *celen)
         printf("unknown\n");
         m = Z3_solver_get_model(ctx, s);
         if (m) Z3_model_inc_ref(ctx, m);
-        printf("potential model:\n%s\n", Z3_model_to_string(ctx, m));
+        /*printf("potential model:\n%s\n", Z3_model_to_string(ctx, m));*/
         break;
     /*找到反例*/
     case Z3_L_TRUE:
         m = Z3_solver_get_model(ctx, s);
         if (m) Z3_model_inc_ref(ctx, m);
         char *counter = Z3_model_to_string(ctx, m);
-        printf("\n%s\n",counter);
+        /*printf("\n%s\n",counter);*/
         *celen = extractCounter(ctx,m,ce);
         break;
   }

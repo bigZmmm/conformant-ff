@@ -2062,7 +2062,7 @@ void build_connectivity_graph(void)
     for (j = 0; j < ginitial_or_length[i]; j++)
     {
       ginitial_or_old[i][j] = ginitial_or[i][j];
-      contains_ginitial_or[i][j] = -1;
+      contains_ginitial_or[i][j] = 0;
       /*设置一个是否是or中的set*/
       inOrfact[ginitial_or[i][j]]=1;
     }
@@ -2079,8 +2079,8 @@ void build_connectivity_graph(void)
     ginitial_state_old.F[i] = ginitial_state.F[i];
   for(i=0;i<ginitial_state_old.num_U;i++){
     ginitial_state_old.U[i] = ginitial_state.U[i];
-    /*设置一个是否是U中的set*/
-    inUfact[ginitial_state.U[i]]=1;
+    /*设置一个是否是U中的set,弃用*/
+    /*inUfact[ginitial_state.U[i]]=1;*/
   }
     
   for(i=0;i<ginitial_state_old.num_unknown_E;i++)
@@ -2094,9 +2094,13 @@ void build_connectivity_graph(void)
   contains_ginitial_state.U = (int *)calloc(ginitial_state_old.num_U,sizeof(int)+5);
   contains_ginitial_state.unknown_E = (int *)calloc(ginitial_state_old.num_unknown_E,sizeof(int)+5);
   for(i=0;i<ginitial_state_old.num_F;i++)
-    contains_ginitial_state.F[i] = -1;
+    contains_ginitial_state.F[i] = 0;
   for(i=0;i<ginitial_state_old.num_U;i++){
-    contains_ginitial_state.U[i] = -1;
+    contains_ginitial_state.U[i] = 0;
+    /*设置一个是否是U中的set*/
+  }
+  for(i=0;i<ginitial_state_old.num_unknown_E;i++){
+    contains_ginitial_state.unknown_E[i] = 0;
     /*设置一个是否是U中的set*/
   }
 

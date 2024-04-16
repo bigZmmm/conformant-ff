@@ -416,9 +416,9 @@ int **contains_ginitial_or;
 int *contains_ginitial_or_length;
 int contains_gnum_initial_or;
 /*判断是否是U中的，或者是否是or中的*/
-Bool inUfact[10000]={0};
+Bool isadd2Ufact[10000]={0};
 Bool inOrfact[10000]={0};
-
+Bool isadd2Ffact[10000]={0};
 /**********************
  * CONNECTIVITY GRAPH *
  **********************/
@@ -604,6 +604,85 @@ void load_fct_file( char *filename );
 
 
 
+void initSomeVar(){
+  int i,j;
+  times( &start );
+  /* 2 * #initial equivalences plus #initial OR clauses plus
+   * max ops to induce * (max ef implic of op<最大效果隐含数> * max noop implic) plus
+   * max #additional clauses for conflict check plus
+   * max #additional clauses for infer clauses
+   */
+  /*计算会有的clause最大数量*/
+  gmax_clauses = 
+    (2 * gnum_initial_equivalence) +
+    (MAX_PLAN_LENGTH * (gmax_E + (2 * gmax_CNFU))) +
+    gmax_C * 2 +
+    1;
+  for ( i = 0; i < gnum_initial_or; i++ ) {
+    /* all ordered pairs of fts yield one binary clause.
+      对于所有的有序配对的fts（符号翻译集合），会产生一个二元子句
+     */
+    gmax_clauses += ginitial_or_length[i] * (ginitial_or_length[i] - 1);
+  }
+  /*printf("gmax_clauses:%d\n",gmax_clauses);*/
+  /* 2 * #initial equivalences plus #initial OR clauses plus
+   * 2 * [as we got two cnfs glued together] max ops to induce * 
+   * (max ef implic of op * max noop implic) plus
+   * max #additional clauses for improvement clauses
+   */
+  gmax_rs_clauses = 
+    (2 * gnum_initial_equivalence) +
+    (2 * MAX_PLAN_LENGTH * (gmax_E + (2 * gmax_CNFU))) +
+    2;
+  for ( i = 0; i < gnum_initial_or; i++ ) {
+    /* all ordered pairs of fts yield one binary clause.
+      这些也会产生子句
+     */
+    gmax_rs_clauses += ginitial_or_length[i] * (ginitial_or_length[i] - 1);
+  }
+
+  /* max. size effect axiom
+   */ 
+  gmax_literals = gmax_C + 1;
+  /* if all effs of maxE op contradict with the same fact then
+   * the resulting noop clause is this long.
+   */ 
+  if ( gmax_E + 2 > gmax_literals ) {
+    gmax_literals = gmax_E + 2;
+  }
+  /* ini OR lengths...
+   */
+  for ( i = 0; i < gnum_initial_or; i++ ) {
+    if ( ginitial_or_length[i] > gmax_literals ) {
+      gmax_literals = ginitial_or_length[i];
+    }
+  }
+
+  /* make space in plan states info, and relax; don't count the time for that.
+   */
+  for ( i = 0; i < MAX_PLAN_LENGTH + 1; i++ ) {
+    /*gnum_ft_conn 最终fact的数量*/
+    make_state( &(gplan_states[i]), gnum_ft_conn );
+  }
+  /*为规划算法中使用的各种全局数组分配内存*/
+  initialize_state_transitions();
+  /*生成规划算法中使用的子句，以便在后续的规划过程中使用*/
+  extend_fixed_clauses_base( 0, 0 );
+  /*为每个子句中的文字（literal）分配一个唯一的编码，以便在后续的推理过程中使用*/
+  extend_fixed_clauses_base_encoding( 0 );
+  /*简化或放宽问题的约束条件，以便更容易地解决问题*/
+  /*用于创建各种数据结构和初始化变量，以便后续的规划算法可以进行有效的推理和搜索*/
+  initialize_relax();
+  if ( gcmd_line.dominating ) {
+    initialize_repeated_states();
+  }
+  source_to_dest( &(gplan_states[0]), &ginitial_state );
+
+  times( &end );
+  TIME( gmem_time );
+}
+
+
 
 
 
@@ -621,12 +700,6 @@ void load_fct_file( char *filename );
 
 
 struct tms lstart, lend;
-
-
-
-
-
-
 
 int main( int argc, char *argv[] )
 
@@ -869,84 +942,87 @@ int main( int argc, char *argv[] )
   /***********************************************************
    * we are finally through with preprocessing and can worry *
    * bout finding a plan instead.    
-   * 开始考虑如何找到一个解决方案                        *
+   * 开始考虑如何找到一个解决方案   
+   * 这一部分用函数initSomeVar()表示                     *
    ***********************************************************/
 
-  times( &start );
+  // times( &start );
 
-  /* 2 * #initial equivalences plus #initial OR clauses plus
-   * max ops to induce * (max ef implic of op<最大效果隐含数> * max noop implic) plus
-   * max #additional clauses for conflict check plus
-   * max #additional clauses for infer clauses
-   */
-  /*计算会有的clause最大数量*/
-  gmax_clauses = 
-    (2 * gnum_initial_equivalence) +
-    (MAX_PLAN_LENGTH * (gmax_E + (2 * gmax_CNFU))) +
-    gmax_C * 2 +
-    1;
-  for ( i = 0; i < gnum_initial_or; i++ ) {
-    /* all ordered pairs of fts yield one binary clause.
-      对于所有的有序配对的fts（符号翻译集合），会产生一个二元子句
-     */
-    gmax_clauses += ginitial_or_length[i] * (ginitial_or_length[i] - 1);
-  }
-  /*printf("gmax_clauses:%d\n",gmax_clauses);*/
-  /* 2 * #initial equivalences plus #initial OR clauses plus
-   * 2 * [as we got two cnfs glued together] max ops to induce * 
-   * (max ef implic of op * max noop implic) plus
-   * max #additional clauses for improvement clauses
-   */
-  gmax_rs_clauses = 
-    (2 * gnum_initial_equivalence) +
-    (2 * MAX_PLAN_LENGTH * (gmax_E + (2 * gmax_CNFU))) +
-    2;
-  for ( i = 0; i < gnum_initial_or; i++ ) {
-    /* all ordered pairs of fts yield one binary clause.
-      这些也会产生子句
-     */
-    gmax_rs_clauses += ginitial_or_length[i] * (ginitial_or_length[i] - 1);
-  }
+  // /* 2 * #initial equivalences plus #initial OR clauses plus
+  //  * max ops to induce * (max ef implic of op<最大效果隐含数> * max noop implic) plus
+  //  * max #additional clauses for conflict check plus
+  //  * max #additional clauses for infer clauses
+  //  */
+  // /*计算会有的clause最大数量*/
+  // gmax_clauses = 
+  //   (2 * gnum_initial_equivalence) +
+  //   (MAX_PLAN_LENGTH * (gmax_E + (2 * gmax_CNFU))) +
+  //   gmax_C * 2 +
+  //   1;
+  // for ( i = 0; i < gnum_initial_or; i++ ) {
+  //   /* all ordered pairs of fts yield one binary clause.
+  //     对于所有的有序配对的fts（符号翻译集合），会产生一个二元子句
+  //    */
+  //   gmax_clauses += ginitial_or_length[i] * (ginitial_or_length[i] - 1);
+  // }
+  // /*printf("gmax_clauses:%d\n",gmax_clauses);*/
+  // /* 2 * #initial equivalences plus #initial OR clauses plus
+  //  * 2 * [as we got two cnfs glued together] max ops to induce * 
+  //  * (max ef implic of op * max noop implic) plus
+  //  * max #additional clauses for improvement clauses
+  //  */
+  // gmax_rs_clauses = 
+  //   (2 * gnum_initial_equivalence) +
+  //   (2 * MAX_PLAN_LENGTH * (gmax_E + (2 * gmax_CNFU))) +
+  //   2;
+  // for ( i = 0; i < gnum_initial_or; i++ ) {
+  //   /* all ordered pairs of fts yield one binary clause.
+  //     这些也会产生子句
+  //    */
+  //   gmax_rs_clauses += ginitial_or_length[i] * (ginitial_or_length[i] - 1);
+  // }
 
-  /* max. size effect axiom
-   */ 
-  gmax_literals = gmax_C + 1;
-  /* if all effs of maxE op contradict with the same fact then
-   * the resulting noop clause is this long.
-   */ 
-  if ( gmax_E + 2 > gmax_literals ) {
-    gmax_literals = gmax_E + 2;
-  }
-  /* ini OR lengths...
-   */
-  for ( i = 0; i < gnum_initial_or; i++ ) {
-    if ( ginitial_or_length[i] > gmax_literals ) {
-      gmax_literals = ginitial_or_length[i];
-    }
-  }
+  // /* max. size effect axiom
+  //  */ 
+  // gmax_literals = gmax_C + 1;
+  // /* if all effs of maxE op contradict with the same fact then
+  //  * the resulting noop clause is this long.
+  //  */ 
+  // if ( gmax_E + 2 > gmax_literals ) {
+  //   gmax_literals = gmax_E + 2;
+  // }
+  // /* ini OR lengths...
+  //  */
+  // for ( i = 0; i < gnum_initial_or; i++ ) {
+  //   if ( ginitial_or_length[i] > gmax_literals ) {
+  //     gmax_literals = ginitial_or_length[i];
+  //   }
+  // }
 
-  /* make space in plan states info, and relax; don't count the time for that.
-   */
-  for ( i = 0; i < MAX_PLAN_LENGTH + 1; i++ ) {
-    /*gnum_ft_conn 最终fact的数量*/
-    make_state( &(gplan_states[i]), gnum_ft_conn );
-  }
-  /*为规划算法中使用的各种全局数组分配内存*/
-  initialize_state_transitions();
-  /*生成规划算法中使用的子句，以便在后续的规划过程中使用*/
-  extend_fixed_clauses_base( 0, 0 );
-  /*为每个子句中的文字（literal）分配一个唯一的编码，以便在后续的推理过程中使用*/
-  extend_fixed_clauses_base_encoding( 0 );
-  /*简化或放宽问题的约束条件，以便更容易地解决问题*/
-  /*用于创建各种数据结构和初始化变量，以便后续的规划算法可以进行有效的推理和搜索*/
-  initialize_relax();
-  if ( gcmd_line.dominating ) {
-    initialize_repeated_states();
-  }
-  source_to_dest( &(gplan_states[0]), &ginitial_state );
+  // /* make space in plan states info, and relax; don't count the time for that.
+  //  */
+  // for ( i = 0; i < MAX_PLAN_LENGTH + 1; i++ ) {
+  //   /*gnum_ft_conn 最终fact的数量*/
+  //   make_state( &(gplan_states[i]), gnum_ft_conn );
+  // }
+  // /*为规划算法中使用的各种全局数组分配内存*/
+  // initialize_state_transitions();
+  // /*生成规划算法中使用的子句，以便在后续的规划过程中使用*/
+  // extend_fixed_clauses_base( 0, 0 );
+  // /*为每个子句中的文字（literal）分配一个唯一的编码，以便在后续的推理过程中使用*/
+  // extend_fixed_clauses_base_encoding( 0 );
+  // /*简化或放宽问题的约束条件，以便更容易地解决问题*/
+  // /*用于创建各种数据结构和初始化变量，以便后续的规划算法可以进行有效的推理和搜索*/
+  // initialize_relax();
+  // if ( gcmd_line.dominating ) {
+  //   initialize_repeated_states();
+  // }
+  // source_to_dest( &(gplan_states[0]), &ginitial_state );
 
-  times( &end );
-  TIME( gmem_time );
+  // times( &end );
+  // TIME( gmem_time );
+
+
 
   times( &start );
 
@@ -963,14 +1039,13 @@ int main( int argc, char *argv[] )
     2 对于反例应该如何得到，即对于一个plan是怎样验证的，而对怎么判断这个规划是否能解
   */
   found_plan = FALSE;
-  State testinit = ginitial_state,goal = ggoal_state;
+  // State testinit = ginitial_state,goal = ggoal_state;
   /*
   ginitial_state.num_U=5;
   ginitial_state.F=(int *)malloc(5*sizeof(int));
   ginitial_state.num_F=1;
   ginitial_state.F[0]=10;
   */
-  
   printf("/n输出初始状态");
   print_state(ginitial_state);
  /* printf("maxF:%d\n",ginitial_state.max_F);
@@ -980,8 +1055,35 @@ int main( int argc, char *argv[] )
   print_state(ggoal_state);
   printf("\n");
   printf("---------\n");
+
+  /*第一次要更新设置初始状态为空*/
+  initGinitiaState();
+  initSomeVar();
+  /*存储反例*/
+  int *ce = (int*)calloc(10000,sizeof(int));
+  memset(ce,0,10000);
+  int celen=0;
+  /*在开始规划前，预填入反例*/
+  conputerCounter(ce,&celen);
+  addCounter(ce,celen);
+  
+  int iteration=0,j;
   /*plan*/
   {
+    for(;;){
+      iteration++;
+      printf("\n第%d次迭代\n当前初始状态:\n",iteration);
+      print_state(ginitial_state);
+      printf("\n\n----------------------INITIAL ORS:-----------------------------");
+      for (i = 0; i < gnum_initial_or; i++)
+      {
+        printf("\nOR: ");
+        for (j = 0; j < ginitial_or_length[i]; j++)
+        {
+          print_ft_name(ginitial_or[i][j]);
+          printf(" ");
+        }
+      }
       if ( gcmd_line.ehc ) {
         /*这个初始状态可以是样本，就是根据这个ginitial_state进行搜索plan*/
         
@@ -1002,21 +1104,33 @@ int main( int argc, char *argv[] )
 
       if ( found_plan ) {
         print_plan();
+      }else{
+        break;
       }
-      output_planner_info();
-      /*存储反例*/
-      int *ce = (int*)calloc(10000,sizeof(int));
-      memset(ce,0,10000);
-      int celen=0;
+      // output_planner_info();
+      
       if(conputerCounter(ce,&celen)){
+          printf("找到反例！\n");
+          addCounter(ce,celen);
+          initSomeVar();
+          printf("\n");
           for(i=0;i<celen;i++)
-            printf("\n%d\n",ce[i]);
+            printf("%d,",ce[i]);
+          printf("\n");
       }else{
         printf("没有反例，找到最终解！\n");
+        break;
       }
+    }
+
   }
   printf("\n\n");
-  
+  if ( found_plan ) {
+        print_plan();
+  }else{
+    printf("规划器未寻找到规划解!\n");
+  }
+  output_planner_info();
   /*测试neg_string每次迭代的重置*/
   /*
   for(i=0;i<=3;i++){
@@ -1144,7 +1258,7 @@ void output_planner_info( void )
   }
   printf( "\n            %7.2f seconds for remaining searching duties",
 	  gsearch_time);
-  printf( "\n            %7.2f seconds total time (+ %7.2f secs for CNF memory allocation)", 
+  printf( "\n            %7.2f seconds total time (+ %7.2f secs for CNF memory allocation)\n", 
 	  gtempl_time + greach_time + grelev_time + gconn_time + genc_time + gsearch_time + gsat_time + geval_time + gr_sat_time + grp_sat_time + gr_cnf_time + gr_enc_time + gcnf_time + grs_time + gss_time + grs_sat_time, gmem_time);
 
 
