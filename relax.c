@@ -429,6 +429,7 @@ void initialize_relax(void)
      */
     r_do_membership_lists();
   } /* if heuristic == 1 */
+  free(had);
 }
 
 void r_do_membership_lists(void)

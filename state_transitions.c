@@ -1149,7 +1149,6 @@ void extend_fixed_clauses_base(int low_state, int high_state)
   static Bool *Ft, *Ut, *Ftpp, *Utpp;
 
   int i, j, k, ef, num_path, t, time, ft, ff, m;
-
   if (fc)
   {
     path = (State_pointer *)calloc(MAX_PLAN_LENGTH + 1, sizeof(State_pointer));
@@ -1487,7 +1486,7 @@ void extend_fixed_clauses_base(int low_state, int high_state)
   /* debugging: see what that looks like!
    */
   if (gcmd_line.T && gcmd_line.debug >= 7)
-  {
+  { 
     if (gcmd_line.T && gcmd_line.debug >= 8)
     {
       printf("\n\n----------------------------- to fixed execution path\n");

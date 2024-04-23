@@ -206,6 +206,7 @@ char* toSmtVariableString(char *now,int timestep){
   strcat(new_var,"-");
   strcat(new_var,str);
   free(str);
+  // free(now);
   return new_var;
 }
 
@@ -488,15 +489,14 @@ void initGinitiaState(){
 
 void addNewOr(int index){
   int i;
-  if(ginitial_or_length_old[gnum_initial_or]<contains_ginitial_or_length[index])
-    ginitial_or[gnum_initial_or] = (int *)realloc(ginitial_or[gnum_initial_or], contains_ginitial_or_length[index]+5);
+  ginitial_or[gnum_initial_or] = (int *)realloc(ginitial_or[gnum_initial_or], contains_ginitial_or_length[index]+100);
   // ginitial_or_length[gnum_initial_or] = contains_ginitial_or_length[index];
   for(i=0;i<ginitial_or_length_old[index];i++){
     if(contains_ginitial_or[index][i]==1){
       /*添加进or中*/
       ginitial_or[gnum_initial_or][ginitial_or_length[gnum_initial_or]++]=ginitial_or_old[index][i];
-      /*添加进初始状态的U中，判断这个U是否已经添加*/
-      if(isadd2Ufact[ginitial_or_old[index][i]]==0){
+      /*添加进初始状态的U中，判断这个U是否已经添加(可能在F中,也可能在U中)*/
+      if(isadd2Ufact[ginitial_or_old[index][i]]==0&&isadd2Ffact[ginitial_or_old[index][i]]==0){
         ginitial_state.U[ginitial_state.num_U++]=ginitial_or_old[index][i];
         isadd2Ufact[ginitial_or_old[index][i]]=1;
       }
@@ -530,7 +530,7 @@ void addCounter(int *ce,int celen){
   }
   
 
-  /*对or进行添加*/
+  /*对or进行插入*/
   for (i = 0; i < gnum_initial_or_old; i++)
   {
     for (j = 0; j < ginitial_or_length_old[i]; j++)
@@ -550,10 +550,52 @@ void addCounter(int *ce,int celen){
       isadd2Ffact[ginitial_state_old.F[i]]=1;
     }
   }
+  /*对于or和unknown的情况特殊处理*/
   for(i=0;i<ginitial_state_old.num_U;i++){
-    if(contains_ginitial_state.U[i]==1&&(inOrfact[ginitial_state_old.U[i]]==0)){
-      ginitial_state.U[ginitial_state.num_U++] = ginitial_state_old.U[i];
-      isadd2Ufact[ginitial_state_old.F[i]]=1;
+    /*如果在U中已经添加,并且不在or中*/
+    if(contains_ginitial_state.U[i]==1){
+      /*是not-a*/
+      if(neg_fact[ginitial_state_old.U[i]]!=0){
+         /*如果U没有a,则加入到F,有a加入到U*/
+         int fact_index = ginitial_equivalence_A[neg_fact[ginitial_state_old.U[i]]-1],flag=0;
+         for(j=0;j<ginitial_state_old.num_U;j++){
+            if(contains_ginitial_state.U[j]==1&&(ginitial_state_old.U[j]==fact_index))
+              flag=1;
+         }
+         /*如果有a,入U*/
+         if(flag){
+            ginitial_state.U[ginitial_state.num_U++] = ginitial_state_old.U[i];
+            isadd2Ufact[ginitial_state_old.U[i]]=1;
+         }
+         /*没有a,入F*/
+         else{
+            ginitial_state.F[ginitial_state.num_F++] = ginitial_state_old.U[i];
+            isadd2Ffact[ginitial_state_old.U[i]]=1;
+         }
+      }
+      /*a*/
+      else if(neg_true_fact[ginitial_state_old.U[i]]!=0){
+         /*如果U没有not-a,加入到F,有not-a加入到U*/
+         int fact_index = ginitial_equivalence_notA[neg_true_fact[ginitial_state_old.U[i]]-1],flag=0;
+         for(j=0;j<ginitial_state_old.num_U;j++){
+            if(contains_ginitial_state.U[j]==1&&(ginitial_state_old.U[j]==fact_index))
+              flag=1;
+         }
+         /*如果有not-a,入U*/
+         if(flag){
+            ginitial_state.U[ginitial_state.num_U++] = ginitial_state_old.U[i];
+            isadd2Ufact[ginitial_state_old.U[i]]=1;
+         }
+         /*没有a,入F*/
+         else{
+            ginitial_state.F[ginitial_state.num_F++] = ginitial_state_old.U[i];
+            isadd2Ffact[ginitial_state_old.U[i]]=1;
+         }
+      }else{
+        ginitial_state.U[ginitial_state.num_U++] = ginitial_state_old.U[i];
+        isadd2Ufact[ginitial_state_old.F[i]]=1;
+      }
+      
     }
   }
   for(i=0;i<ginitial_state_old.num_unknown_E;i++){
@@ -696,6 +738,7 @@ Bool conputerCounter(int *ce,int *celen)
   /*对初始状态进行转换*/
   char *init_smt = (char*)calloc(1,sizeof("(assert (AND"));
   strcat(init_smt,"(assert (AND");
+  
   int factset[10000]={0};
   /*对存在于or中的fact在set中记录，不重复添加*/
   for (i = 0; i < gnum_initial_or_old; i++)
@@ -719,15 +762,52 @@ Bool conputerCounter(int *ce,int *celen)
           }
       }
   }
+  /*如果是U里面的,是not有neg的,并且没有在or中,就要添加一个约束,只能存在一个*/
   for(i=0;i<ginitial_state_old.num_U;i++){
-      if(factset[ginitial_state_old.U[i]]!=1){
-          char *tmp = toSmtVariableString(Fact2SmtString(ginitial_state_old.U[i]),0);
-          init_smt=contactString(init_smt, tmp);    
-          init_smt=contactString(init_smt, "\n");  
-          if(set_add(&variables, tmp)){
-            free(tmp);
+      /*对于这种情况,不在or中的not
+        要对其进行约束,因为not-a和a不能共存于and中
+        所以除了添加进入or中,还要对not-a进行处理
+        */
+      // if(factset[ginitial_state_old.U[i]]!=1){
+      //     char *tmp = toSmtVariableString(Fact2SmtString(ginitial_state_old.U[i]),0);
+      //     init_smt=contactString(init_smt, tmp);    
+      //     init_smt=contactString(init_smt, "\n");  
+      //     if(set_add(&variables, tmp)){
+      //       free(tmp);
+      //     }
+      // }
+      /*对U中的not-a进行处理,三种情况:1.oneof(不需要处理) 2.or(对not进行添加) 3.unknown(除了对not进行添加,还要对a进行屏蔽)
+      只需要判断这个not是否在or中,其它的不用处理
+      */
+      if(neg_fact[ginitial_state_old.U[i]]!=0&&factset[ginitial_state_old.U[i]]!=1){
+          char *neg_a = toSmtVariableString(Fact2SmtString(ginitial_state_old.U[i]),0);
+          int index = neg_fact[ginitial_state_old.U[i]]-1;
+          char *a = toSmtVariableString(Fact2SmtString(ginitial_equivalence_A[index]),0);
+          char *tmp = (char*)calloc(1,sizeof("(or "));
+          strcat(tmp,"(or");
+          tmp = contactString(tmp,neg_a);
+          tmp = contactString(tmp,a);
+          tmp = contactString(tmp,")\n");
+          tmp = contactString(tmp,"(or (not");
+          tmp = contactString(tmp,neg_a);
+          tmp = contactString(tmp,")");
+          tmp = contactString(tmp,"(not");
+          tmp = contactString(tmp,a);
+          tmp = contactString(tmp,"))\n");
+          init_smt=contactString(init_smt, tmp);
+          // init_smt=contactString(init_smt, n);    
+          // init_smt=contactString(init_smt, "\n");  
+          if(set_add(&variables, neg_a)){
+            free(neg_a);
           }
+          if(set_add(&variables, a)){
+            free(a);
+          }
+        free(tmp);
       }
+
+
+
   } 
 
   /*再将所有的or添加进来*/
@@ -768,10 +848,10 @@ Bool conputerCounter(int *ce,int *celen)
   char *final_smt=(char*)calloc(10,sizeof(char));
   uint64_t var_length=set_length(&variables);
   char** var_string = set_to_array(&variables,&var_length);
-  /*
-  printf("\nlength: %d",var_length);
-  printf("\n");
-  */
+  
+  printf("\nvar_length: %d\n",var_length);
+  // printf("\n");
+  
   for(i=0;i<var_length;i++){
     char *var = (char*)calloc(1,sizeof("(declare-fun"));
     strcat(var,"(declare-fun");
@@ -787,15 +867,14 @@ Bool conputerCounter(int *ce,int *celen)
 
   final_smt=contactString(final_smt,init_smt);
   toLower(final_smt);
-
+  set_destroy(&variables);
   /*printf("\n%s\n",preference);*/
-  /*printf("\n%s\n",final_smt);*/
+  // printf("\n%s\n",final_smt);
   /*printf("\n%s\n",neg_assert);*/
   free(simulation);
   free(preference);
   /*(六)*/
 
-  
   Z3_config cfg;
   Z3_context ctx;
   Z3_solver s;
@@ -814,7 +893,7 @@ Bool conputerCounter(int *ce,int *celen)
   /*printf("formula: %s\n", Z3_ast_vector_to_string(ctx, f));*/
   /*加入所有的断言*/
   int n = Z3_ast_vector_size(ctx,f);
-  printf("\n%d\n",n);
+  printf("\n当前收集的断言数：%d\n",n);
   for(i=0;i<n;i++)
     Z3_solver_assert(ctx, s, Z3_ast_vector_get(ctx,f,i));
   
@@ -826,6 +905,9 @@ Bool conputerCounter(int *ce,int *celen)
     /*未找到反例*/
     case Z3_L_FALSE:
         printf("unsat\n");
+        Z3_solver_dec_ref(ctx, s);
+        Z3_del_context(ctx);
+        free(final_smt);
         return false;
     case Z3_L_UNDEF:
         printf("unknown\n");
@@ -844,7 +926,7 @@ Bool conputerCounter(int *ce,int *celen)
   }
   Z3_solver_dec_ref(ctx, s);
   Z3_del_context(ctx);
-
+  free(final_smt);
   return true; 
 }
 

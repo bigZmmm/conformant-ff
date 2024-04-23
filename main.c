@@ -575,11 +575,12 @@ Bool gdomination_valid;
 
 /*存储有等价fact的fact*/
 int neg_fact[10000]={0};
+int neg_true_fact[10000]={0};
 /*用于对neg_fact的添加的去重*/
 Bool fact_unuse_zero[10000]={0};
 Bool fact_step[10000]={0};
-
-
+/*存储初始就在or中的*/
+int factset[10000]={0};
 
 
 
@@ -601,7 +602,125 @@ void load_ops_file( char *filename );
 void load_fct_file( char *filename );
 
 
+void freesomeVar(){
+  int i,j;
+  for ( i = 0; i < MAX_PLAN_LENGTH + 1; i++ ) {
+    /*gnum_ft_conn 最终fact的数量*/
+    if(gnum_ft_conn>0)
+      free(gplan_states[i].F);
+    free(gplan_states[i].U);
+    free(gplan_states[i].unknown_E);
+  }
+  /*initialize_state_transitions();*/
+  for (i = 0; i < gmax_clauses; i++)
+  {
+    free(gclauses[i]);
+    // gclauses[i] = (TimedLiteral *)calloc(gmax_literals, sizeof(TimedLiteral));
+    // gclause_length[i] = 0;
+  }
+  free(gclauses);
+  free(gclause_length);
 
+  for (i = 0; i < MAX_PLAN_LENGTH + 1; i++)
+  {
+    free(gcodes[i]);
+    // gcodes[i] = (int *)calloc(gnum_ft_conn, sizeof(int));
+  }
+  free(gcodes);
+
+  free(gcf);
+  free(gct);
+
+  free(gpos_c_in_clause_start);
+  free(gpos_c_in_clause_fixed);
+  free(gpos_c_in_clause_end);
+  free(gneg_c_in_clause_start);
+  free(gneg_c_in_clause_fixed);
+  free(gneg_c_in_clause_end);
+  free(lhitting_set);
+  free(gdecision_stack);
+  free(lassigned);
+  free(gsum_k_clauses);
+  /*extend_fixed_clauses_base( 0, 0 ); 不会重复赋值*/
+  /*extend_fixed_clauses_base_encoding( 0 ); 无*/
+  /*initialize_relax();*/
+  if(gnum_ft_conn>0)
+    free(lcurrent_goals.F);
+  free(lcurrent_goals.U);
+  free(lcurrent_goals.unknown_E);
+  free(gH);
+  free(gA);
+  free(lnum_U);
+  for (i = 0; i < RELAXED_STEPS + MAX_PLAN_LENGTH; i++)
+  {
+    free(lU[i]);
+  }
+  free(lU);
+  free(lF);
+  free(lE);
+  free(lch_E);
+  free(l0P_E);
+  free(l0P_O);
+  free(lch_O);
+  if (gcmd_line.heuristic == 0 ||
+      gcmd_line.heuristic == 1)
+  {
+    int maxcl = gnum_ft_conn ;
+    // free(lr_clause_length);
+    for (i = 0; i < maxcl; i++)
+    {
+      free(lr_clauses[i]);
+    }
+    free(lr_clauses);
+
+    free(lr_codes);
+    free(lr_cf);
+    free(lr_assigned);
+    free(lr_decision_stack );
+
+    free(lr_pos_c_in_clause_start);
+    free(lr_pos_c_in_clause_end);
+    free(lr_neg_c_in_clause_start);
+    free(lr_neg_c_in_clause_end);
+  } /* if heuristic == 1 */
+
+  if ( gcmd_line.dominating ) {
+    free(lrs_clause_length[0]);
+    free(lrs_clause_length[1]);
+    free(lrs_clause_length);
+    free(lrs_dp_clause_length); 
+    for ( i = 0; i < gmax_rs_clauses; i++ ) {
+      free(lrs_clauses[0][i]); 
+      free(lrs_clauses[1][i]); 
+      free(lrs_dp_clauses[i]); 
+    }
+    free(lrs_clauses[1]);
+    free(lrs_clauses[0]);
+    free(lrs_clauses);
+
+    free(lrs_dp_clauses);
+    for ( i = 0; i <= MAX_PLAN_LENGTH; i++ ) {
+      free(lrs_codes[0][i]); 
+      free(lrs_codes[1][i]); 
+    }
+    free(lrs_codes[0]);
+    free(lrs_codes[1]);
+    free(lrs_codes);
+    
+    free(lrs_cn);
+    free(lrs_cf);
+    free(lrs_ct);
+    
+    free(lrs_hitting_set);
+    free(lrs_assigned);
+    free(lrs_decision_stack);
+
+    free(lrs_pos_c_in_clause_start);
+    free(lrs_pos_c_in_clause_end);
+    free(lrs_neg_c_in_clause_start);
+    free(lrs_neg_c_in_clause_end);
+  }
+}
 
 
 void initSomeVar(){
@@ -659,6 +778,7 @@ void initSomeVar(){
   }
 
   /* make space in plan states info, and relax; don't count the time for that.
+     这个地方的没有free
    */
   for ( i = 0; i < MAX_PLAN_LENGTH + 1; i++ ) {
     /*gnum_ft_conn 最终fact的数量*/
@@ -682,22 +802,9 @@ void initSomeVar(){
   TIME( gmem_time );
 }
 
-
-
-
-
-
-
-
 /*
  *  ----------------------------- MAIN ROUTINE ----------------------------
  */
-
-
-
-
-
-
 
 struct tms lstart, lend;
 
@@ -1046,15 +1153,15 @@ int main( int argc, char *argv[] )
   ginitial_state.num_F=1;
   ginitial_state.F[0]=10;
   */
-  printf("/n输出初始状态");
-  print_state(ginitial_state);
+  // printf("/n输出初始状态");
+  // print_state(ginitial_state);
  /* printf("maxF:%d\n",ginitial_state.max_F);
   printf("\n");
 */
-  printf("---------\n目标状态");
-  print_state(ggoal_state);
-  printf("\n");
-  printf("---------\n");
+  // printf("---------\n目标状态");
+  // print_state(ggoal_state);
+  // printf("\n");
+  // printf("---------\n");
 
   /*第一次要更新设置初始状态为空*/
   initGinitiaState();
@@ -1111,12 +1218,13 @@ int main( int argc, char *argv[] )
       
       if(conputerCounter(ce,&celen)){
           printf("找到反例！\n");
+          freesomeVar();
           addCounter(ce,celen);
           initSomeVar();
           printf("\n");
-          for(i=0;i<celen;i++)
-            printf("%d,",ce[i]);
-          printf("\n");
+          // for(i=0;i<celen;i++)
+          //   printf("%d,",ce[i]);
+          // printf("\n");
       }else{
         printf("没有反例，找到最终解！\n");
         break;
@@ -1130,7 +1238,35 @@ int main( int argc, char *argv[] )
   }else{
     printf("规划器未寻找到规划解!\n");
   }
+  /*初始的初始状态以及目标状态*/
+  printf("\n初始目标状态\n");
+  print_state(ginitial_state_old);
+  printf("\n\n----------------------INITIAL ORS:-----------------------------");
+  for (i = 0; i < gnum_initial_or_old; i++)
+  {
+    printf("\nOR: ");
+    for (j = 0; j < ginitial_or_length_old[i]; j++)
+    {
+      print_ft_name(ginitial_or_old[i][j]);
+      printf(" ");
+    }
+  }
+  /*当前反例添加的目标状态*/
+  printf("\n当前反例添加的目标状态\n");
+  print_state(ginitial_state);
+  printf("\n\n----------------------INITIAL ORS:-----------------------------");
+  for (i = 0; i < gnum_initial_or; i++)
+  {
+    printf("\nOR: ");
+    for (j = 0; j < ginitial_or_length[i]; j++)
+    {
+      print_ft_name(ginitial_or[i][j]);
+      printf(" ");
+    }
+  }
   output_planner_info();
+  printf("\nplan length:%d\niteration:%d\n",gnum_plan_ops,iteration);
+
   /*测试neg_string每次迭代的重置*/
   /*
   for(i=0;i<=3;i++){

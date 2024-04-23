@@ -1810,8 +1810,70 @@ extern Bool gdomination_valid;
 
 /*存储有等价fact的fact*/
 extern int neg_fact[10000];
+extern int neg_true_fact[10000];
 /*用于对neg_fact的添加的去重*/
 extern Bool fact_unuse_zero[10000];
 extern Bool fact_step[10000];
+
+
+/*用于清理每次迭代所用内存的变量*/
+extern int *lhitting_set;
+extern int *lassigned;
+extern State lcurrent_goals;
+extern UftNode **lU;
+extern int *lnum_U;
+
+extern int *lF;
+extern int *lE;
+
+extern int *lch_E;
+extern int *l0P_E;
+
+/* for get applicable actions
+ */
+extern int *lch_O;
+extern int *l0P_O;
+
+extern TimedLiteral **lr_clauses;
+extern int *lr_clause_length;
+
+extern int *lr_codes; /* maps a fact at time 0 to its r-internal code */
+extern int *lr_cf;
+
+extern int *lr_assigned;
+extern int *lr_decision_stack;
+
+extern MemberList_pointer *lr_pos_c_in_clause_start;
+extern MemberList_pointer *lr_pos_c_in_clause_end;
+extern MemberList_pointer *lr_neg_c_in_clause_start;
+extern MemberList_pointer *lr_neg_c_in_clause_end;
+
+extern TimedLiteral ***lrs_clauses;
+extern int **lrs_clause_length;
+extern int *lrs_num_clauses;
+extern int *lrs_endtime;
+
+extern int **lrs_dp_clauses;
+extern int *lrs_dp_clause_length;
+extern int *lrs_assigned;
+
+extern int ***lrs_codes;
+
+/* inverse mapping, to undo changes in table.
+ */
+extern int *lrs_cn, *lrs_cf, *lrs_ct, lrs_num_c;
+extern int *lrs_hitting_set;
+
+
+extern int *lrs_decision_stack;
+
+/* for each possible ft code, a pointer to connected dynamic list
+ * of member elements, ie the clauses in which it participates,
+ * positive and negative.
+ */
+extern MemberList_pointer *lrs_pos_c_in_clause_start;
+extern MemberList_pointer *lrs_pos_c_in_clause_end;
+extern MemberList_pointer *lrs_neg_c_in_clause_start;
+extern MemberList_pointer *lrs_neg_c_in_clause_end;
 
 #endif __FF_H
