@@ -117,7 +117,7 @@ char* contactString(char *now,char *add){
     strcat(new_var,now);
     strcat(new_var," ");
     strcat(new_var,add);
-    free(now);
+    // free(now);
     /*printf("\n%s\n",new_var);*/
     return new_var;
 }
@@ -489,7 +489,8 @@ void initGinitiaState(){
 
 void addNewOr(int index){
   int i;
-  ginitial_or[gnum_initial_or] = (int *)realloc(ginitial_or[gnum_initial_or], contains_ginitial_or_length[index]+100);
+  if(ginitial_or_length_old[gnum_initial_or]<contains_ginitial_or_length[index])
+      ginitial_or[gnum_initial_or] = (int *)realloc(ginitial_or[gnum_initial_or], contains_ginitial_or_length[index]+50);
   // ginitial_or_length[gnum_initial_or] = contains_ginitial_or_length[index];
   for(i=0;i<ginitial_or_length_old[index];i++){
     if(contains_ginitial_or[index][i]==1){

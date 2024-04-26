@@ -1129,8 +1129,6 @@ int main( int argc, char *argv[] )
   // times( &end );
   // TIME( gmem_time );
 
-
-
   times( &start );
 
   if ( gcmd_line.manual ) {

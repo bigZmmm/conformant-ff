@@ -1429,6 +1429,7 @@ void insert_path_implications(State *S, EhcNode *ehc_father, BfsNode *bfs_father
           printf("\neffcond -- in rplan-nodel-noops -- has no negation?\n\n");
           exit(1);
         }
+        //报错
         if (!Ut[notc])
         {
           printf("\nnegated effcond -- in rplan-nodel-noops -- is not unknown?\n\n");
