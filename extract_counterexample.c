@@ -25,6 +25,7 @@
 #include "z3.h"
 #include "set.h"
 
+/*对具有相对真值的谓语添加约束*/
 char* neg_assert;
 
 void toLower(char* str){
@@ -117,7 +118,7 @@ char* contactString(char *now,char *add){
     strcat(new_var,now);
     strcat(new_var," ");
     strcat(new_var,add);
-    // free(now);
+    free(now);
     /*printf("\n%s\n",new_var);*/
     return new_var;
 }
@@ -181,7 +182,7 @@ char *Fact2SmtString(int i)
     }
   }
   /*printf("\n%s\n",tmp);*/
-  name = (char *)malloc(strlen(tmp) + 1+10);
+  name = (char *)calloc(strlen(tmp) + 1+10,sizeof(char));
   strcpy(name, tmp);
   char *fact_num = (char*)calloc(20,sizeof(char));
   itoa(i,fact_num,10);
@@ -190,6 +191,7 @@ char *Fact2SmtString(int i)
   return name;
 }
 
+/*更新最新的目标表*/
 void addToNgoal(int *newgoal,int index){
   if(newgoal[index]==0){
     newgoal[index]=1;
@@ -206,7 +208,7 @@ char* toSmtVariableString(char *now,int timestep){
   strcat(new_var,"-");
   strcat(new_var,str);
   free(str);
-  // free(now);
+  free(now);
   return new_var;
 }
 
@@ -236,7 +238,7 @@ void assert_Neg(int cur_fact,int timestep,SimpleSet *regre_variable){
       fact_unuse_zero[cur_fact]=1;
 }
 
-
+/* - - 当前回溯谓语 谓语前动作 - 所有变量 下一轮回归的谓语集合 当前时间步 */
 void addAction2Goal(char **simulation,char **preference,int current_goal_fact,Action *a,int new_len,SimpleSet *regre_variable,int *new_goal,int timestep){
     /*print_ft_name(current_goal_fact);*/
     addToNgoal(new_goal,current_goal_fact);
@@ -244,6 +246,7 @@ void addAction2Goal(char **simulation,char **preference,int current_goal_fact,Ac
     char *fact2string = toSmtVariableString(Fact2SmtString(current_goal_fact),timestep);
     /*为neg的fact添加相反的规则*/
     char *cur =  toSmtVariableString(Fact2SmtString(current_goal_fact),timestep-1);
+    /*添加第0步的neg*/
     if((timestep-1)==0)
       assert_Neg(current_goal_fact,0,regre_variable);
     char *pre = (char*)calloc(1,sizeof("(= ")+strlen(fact2string)+5);
@@ -255,13 +258,13 @@ void addAction2Goal(char **simulation,char **preference,int current_goal_fact,Ac
     strcat(notdel_to_string,"(NOT (OR FALSE");
     strcat(pre,"(= ");
     strcat(pre,fact2string);
-    /**/
+    /*遍历该动作的所有的条件影响，将可能的前置状态都得到*/
     for(e=0;e<(a->num_effects);e++){
       ActionEffect ac = a->effects[e];
       /*生成add的smt*/
-      /*success*/
+      /*当前回溯谓语在动作的add集中*/
       if(inFacts(ac.adds,ac.num_adds,current_goal_fact)){
-        /*有effect的前置条件when*/
+        /*effect前置条件when不为空*/
         if ((ac.num_conditions) > 0){
           if ((ac.num_conditions) > 1){
             add_to_string=contactString(add_to_string, "(AND");
@@ -489,13 +492,15 @@ void initGinitiaState(){
 
 void addNewOr(int index){
   int i;
+  /*如果当前需要存储的or，超出了初始化or的大小，进行扩充*/
   if(ginitial_or_length_old[gnum_initial_or]<contains_ginitial_or_length[index])
       ginitial_or[gnum_initial_or] = (int *)realloc(ginitial_or[gnum_initial_or], contains_ginitial_or_length[index]+50);
   // ginitial_or_length[gnum_initial_or] = contains_ginitial_or_length[index];
   for(i=0;i<ginitial_or_length_old[index];i++){
     if(contains_ginitial_or[index][i]==1){
-      /*添加进or中*/
-      ginitial_or[gnum_initial_or][ginitial_or_length[gnum_initial_or]++]=ginitial_or_old[index][i];
+      /*添加进or中 没有被添加进F，就可以加入or
+        */
+        ginitial_or[gnum_initial_or][ginitial_or_length[gnum_initial_or]++]=ginitial_or_old[index][i];
       /*添加进初始状态的U中，判断这个U是否已经添加(可能在F中,也可能在U中)*/
       if(isadd2Ufact[ginitial_or_old[index][i]]==0&&isadd2Ffact[ginitial_or_old[index][i]]==0){
         ginitial_state.U[ginitial_state.num_U++]=ginitial_or_old[index][i];
@@ -530,7 +535,6 @@ void addCounter(int *ce,int celen){
     }
   }
   
-
   /*对or进行插入*/
   for (i = 0; i < gnum_initial_or_old; i++)
   {
@@ -558,6 +562,7 @@ void addCounter(int *ce,int celen){
       /*是not-a*/
       if(neg_fact[ginitial_state_old.U[i]]!=0){
          /*如果U没有a,则加入到F,有a加入到U*/
+         /*找到是否有a*/
          int fact_index = ginitial_equivalence_A[neg_fact[ginitial_state_old.U[i]]-1],flag=0;
          for(j=0;j<ginitial_state_old.num_U;j++){
             if(contains_ginitial_state.U[j]==1&&(ginitial_state_old.U[j]==fact_index))
@@ -574,7 +579,7 @@ void addCounter(int *ce,int celen){
             isadd2Ffact[ginitial_state_old.U[i]]=1;
          }
       }
-      /*a*/
+      /*是a*/
       else if(neg_true_fact[ginitial_state_old.U[i]]!=0){
          /*如果U没有not-a,加入到F,有not-a加入到U*/
          int fact_index = ginitial_equivalence_notA[neg_true_fact[ginitial_state_old.U[i]]-1],flag=0;
@@ -587,7 +592,7 @@ void addCounter(int *ce,int celen){
             ginitial_state.U[ginitial_state.num_U++] = ginitial_state_old.U[i];
             isadd2Ufact[ginitial_state_old.U[i]]=1;
          }
-         /*没有a,入F*/
+         /*没有not-a,入F*/
          else{
             ginitial_state.F[ginitial_state.num_F++] = ginitial_state_old.U[i];
             isadd2Ffact[ginitial_state_old.U[i]]=1;
@@ -623,27 +628,26 @@ void addCounter(int *ce,int celen){
       }
     }
   }
-
-
-
 }
 
-
 /*
-  (一)、初始化 初始状态谓语为smt变量
-  (二)、根据plan对目标状态所有的谓语进行回溯，过程中每步的表示都要按照步数进行标注，得到对应的assert
-    1.对目标的所有谓语进行，添加-timestep ——> preference
-    2.对目标状态进行回归，（= 当前目标状态~第一次动作后的状态的谓语 【c isvalid true】【c isunsatisfied false】【c-timestep】 )
-    3.回归中动作不为空的前置条件的所有谓语-timestep
-  (三)、转换初始状态assert
-  (四)、对不是第0步的所有具有neg的谓语进行处理，第0步具有neg属性的在第(一)、(二)中完成
-  (五)、将所有变量转换为smt
-  (六)、进行sat验证，如果有反例，将反例保存到一个int数组中
-  注意：谓语的最大上限为10000，超出会报错
+  (一)、将初始状态中的谓语加上时间步0加入变量集
+  (二)、根据plan对目标状态所有的谓语进行回溯，过程中每步的表示都要按照步数进行标注，得到每步对应的谓语的smt表示
+    1.对当前的所有谓语进行，添加-timestep ——> preference
+    2.根据状态前的动作，对当前状态进行回溯，（= 当前目标状态~第一次动作后的状态的谓语 【c isvalid true】【c isunsatisfied false】【c-timestep) ——> simulation
+    3.回归中动作不为空的前置条件的所有谓语添加-timestep ——> preference
+  (三)、生成初始状态assert
+  (四)、对非第0步的所有具有neg的谓语进行处理（not），第0步具有neg属性的在第(一)、(二)中完成
+  (五)、将所有变量转换为smt变量
+  (六)、进行sat验证，如果有反例，将反例保存到一个int数组中，并返回true\false
+  注意：谓语的最大上限为10000，超出会报错（所有需要的初始化均为10000，如有需要可调整）
 */
 Bool conputerCounter(int *ce,int *celen)
 {
-  /*每次迭代，neg的哈希表要重置*/
+  /*每次迭代，neg的哈希表要重置
+    当前只使用了fact_unuse_zero，当-0的谓语进行添加时，要进行约束，不能对不存在的添加
+    非-0的谓语，要进行约束，可以添加
+    */
   memset(fact_unuse_zero,0,10000);
   memset(fact_step,0,10000);
   if(neg_assert==NULL){
@@ -656,14 +660,17 @@ Bool conputerCounter(int *ce,int *celen)
   int i, j;
   Bool success = FALSE;
   PredicateString *predicate_string;
+  /*存储当前目标状态根据plan回溯到初始状态的smt公式*/
   char *simulation = (char *)calloc(1, sizeof("(assert (and true "));
   strcat(simulation,"(assert (and true ");
+  /*（否定）存储目标状态和plan中动作的前置条件*/
   char *preference = (char *)calloc(1, sizeof("(not (and "));
   strcat(preference,"(not (and ");
+  /*set结构变量表，存储运行中的所有变量*/
   SimpleSet variables;
   set_init(&variables);
   /*(一)*/
-  /*添加所有初始状态谓语，下方实现了*/
+  /*初始状中的谓语，以步数0结尾，加入到变量表中*/
   for (i = 0; i < ginitial_state_old.num_F; i++)
   {
     set_add(&variables,toSmtVariableString(Fact2SmtString(ginitial_state_old.F[i]),0));
@@ -696,9 +703,10 @@ Bool conputerCounter(int *ce,int *celen)
 
   /*(二)*/
   int timestep = gnum_plan_ops;
-  /*存储当前的目标状态谓语*/  /*一*/
+  /*current_goal_fact存储当前的目标状态谓语*/ 
   int goal_len=ggoal_state.num_F+ggoal_state.num_U;
   int *current_goal_fact=(int *)calloc(10000, sizeof(int));
+  /*目标状态加入preference*/
   for(i=0;i<ggoal_state.num_F;i++){
     current_goal_fact[i]=ggoal_state.F[i];
     preference=contactString(preference,toSmtVariableString(Fact2SmtString(ggoal_state.F[i]),timestep));
@@ -710,29 +718,30 @@ Bool conputerCounter(int *ce,int *celen)
     set_add(&variables,toSmtVariableString(Fact2SmtString(ggoal_state.U[i]),timestep));
   }
   
-  /*当前目标状态ggoal_state
-  对目标状态进行回归，得到回归assert*/
+  /*对目标状态进行回归，得到回归assert*/
   int new_goal[10005]={0};
   for (i = timestep-1; i >=0; i--)
-  {   /*
-      printf("\n%d :",i);
-      print_op_name( gplan_ops[i] );
-      */
-      Action *a = gop_conn[gplan_ops[i]].action;
-      int new_len=0;
-      for(j=0;j<goal_len;j++){        
-          addAction2Goal(&simulation,&preference,current_goal_fact[j],a,&new_len,&variables,new_goal,i+1);
-      }
-      /*对当前需要回归的fact进行记录*/
-      memset(current_goal_fact,0,10000);
-      updNewgoal(new_goal,current_goal_fact,&new_len);
-      /*重置需要添加的fact为空*/
-      memset(new_goal,0,10000);
-      goal_len = new_len;
+  {   
+    /*
+    printf("\n%d :",i);
+    print_op_name( gplan_ops[i] );
+    */
+    Action *a = gop_conn[gplan_ops[i]].action;
+    int new_len=0;
+    for(j=0;j<goal_len;j++){        
+        addAction2Goal(&simulation,&preference,current_goal_fact[j],a,&new_len,&variables,new_goal,i+1);
+    }
+    /*对当前需要回归的fact进行记录*/
+    memset(current_goal_fact,0,10000);
+    updNewgoal(new_goal,current_goal_fact,&new_len);
+    /*重置需要添加的fact为空*/
+    memset(new_goal,0,10000);
+    goal_len = new_len;
   }
   preference = contactString(preference,") )");
   simulation = contactString(simulation,preference);
   simulation = contactString(simulation,") )\n");
+  free(current_goal_fact);
   /*printf("\nsmt: %s\n",simulation);*/
 
   /*(三)*/
@@ -740,8 +749,8 @@ Bool conputerCounter(int *ce,int *celen)
   char *init_smt = (char*)calloc(1,sizeof("(assert (AND"));
   strcat(init_smt,"(assert (AND");
   
-  int factset[10000]={0};
   /*对存在于or中的fact在set中记录，不重复添加*/
+  int factset[10000]={0};
   for (i = 0; i < gnum_initial_or_old; i++)
   {
     for (j = 0; j < ginitial_or_length_old[i]; j++)
@@ -766,7 +775,7 @@ Bool conputerCounter(int *ce,int *celen)
   /*如果是U里面的,是not有neg的,并且没有在or中,就要添加一个约束,只能存在一个*/
   for(i=0;i<ginitial_state_old.num_U;i++){
       /*对于这种情况,不在or中的not
-        要对其进行约束,因为not-a和a不能共存于and中
+        要对其进行约束,因为在SMT中not-a和a不能在没有or约束下共存于and中
         所以除了添加进入or中,还要对not-a进行处理
         */
       // if(factset[ginitial_state_old.U[i]]!=1){
@@ -777,8 +786,10 @@ Bool conputerCounter(int *ce,int *celen)
       //       free(tmp);
       //     }
       // }
+
       /*对U中的not-a进行处理,三种情况:1.oneof(不需要处理) 2.or(对not进行添加) 3.unknown(除了对not进行添加,还要对a进行屏蔽)
-      只需要判断这个not是否在or中,其它的不用处理
+        所以只需要判断这个not是否在or中,其它的不用处理（必然存在的情况，有not-a在U中，必然有a在U中---cff）
+        用oneof对not-a和a进行约束
       */
       if(neg_fact[ginitial_state_old.U[i]]!=0&&factset[ginitial_state_old.U[i]]!=1){
           char *neg_a = toSmtVariableString(Fact2SmtString(ginitial_state_old.U[i]),0);
@@ -806,9 +817,6 @@ Bool conputerCounter(int *ce,int *celen)
           }
         free(tmp);
       }
-
-
-
   } 
 
   /*再将所有的or添加进来*/
@@ -850,7 +858,7 @@ Bool conputerCounter(int *ce,int *celen)
   uint64_t var_length=set_length(&variables);
   char** var_string = set_to_array(&variables,&var_length);
   
-  printf("\nvar_length: %d\n",var_length);
+  printf("\nvar_size: %d\n",var_length);
   // printf("\n");
   
   for(i=0;i<var_length;i++){
@@ -874,6 +882,7 @@ Bool conputerCounter(int *ce,int *celen)
   /*printf("\n%s\n",neg_assert);*/
   free(simulation);
   free(preference);
+  free(init_smt);
   /*(六)*/
 
   Z3_config cfg;
@@ -897,10 +906,11 @@ Bool conputerCounter(int *ce,int *celen)
   printf("\n当前收集的断言数：%d\n",n);
   for(i=0;i<n;i++)
     Z3_solver_assert(ctx, s, Z3_ast_vector_get(ctx,f,i));
-  
+
   /*提取反例*/
   Z3_model m      = 0;
   Z3_lbool result = Z3_solver_check(ctx, s);
+  char *counter ;
   printf("\n%d\n",result);
   switch (result) {
     /*未找到反例*/
@@ -915,12 +925,15 @@ Bool conputerCounter(int *ce,int *celen)
         m = Z3_solver_get_model(ctx, s);
         if (m) Z3_model_inc_ref(ctx, m);
         /*printf("potential model:\n%s\n", Z3_model_to_string(ctx, m));*/
+        /*这里只是可能的，不一定有解*/
+        // char *counter = Z3_model_to_string(ctx, m);
+        *celen = extractCounter(ctx,m,ce);
         break;
     /*找到反例*/
     case Z3_L_TRUE:
         m = Z3_solver_get_model(ctx, s);
         if (m) Z3_model_inc_ref(ctx, m);
-        char *counter = Z3_model_to_string(ctx, m);
+        // char *counter = Z3_model_to_string(ctx, m);
         /*printf("\n%s\n",counter);*/
         *celen = extractCounter(ctx,m,ce);
         break;

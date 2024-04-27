@@ -102,10 +102,13 @@ float gtempl_time = 0, greach_time = 0, grelev_time = 0, gconn_time = 0, gmem_ti
 float gsearch_time = 0, geval_time = 0, gcnf_time = 0, genc_time = 0, gsat_time = 0;
 float grs_time = 0, grs_sat_time = 0, gss_time = 0, gsc_time = 0;
 float gr_sat_time = 0, grp_sat_time = 0, gr_cnf_time = 0, gr_enc_time = 0, gmembership_time = 0;
+float gcounter_time=0;
 int gsat_calls = 0, gcnfs = 0, grs_sat_calls = 0, gss_sat_calls = 0, gsc_sat_calls = 0;
 int gr_sat_calls = 0, grp_sat_calls = 0;
 int grs_comps = 0, grs_conf_comps = 0;
 int grs_hits = 0, gss_hits = 0, gdp_calls = 0, gup_calls = 0;
+
+
 
 int sample_time;
 
@@ -1169,25 +1172,35 @@ int main( int argc, char *argv[] )
   memset(ce,0,10000);
   int celen=0;
   /*在开始规划前，预填入反例*/
+  times(&start);
   conputerCounter(ce,&celen);
   addCounter(ce,celen);
-  
+  times(&end);
+  TIME(gcounter_time);
   int iteration=0,j;
   /*plan*/
   {
     for(;;){
       iteration++;
       printf("\n第%d次迭代\n当前初始状态:\n",iteration);
-      print_state(ginitial_state);
-      printf("\n\n----------------------INITIAL ORS:-----------------------------");
+      // print_state(ginitial_state);
+      printf("F:%d U:%d\n",ginitial_state.num_F,ginitial_state.num_U);
+      // printf("\n\n----------------------INITIAL ORS:-----------------------------");
+      printf("num_Or:%d\n",gnum_initial_or);
+      printf("参数大于2的OR: \n");
       for (i = 0; i < gnum_initial_or; i++)
       {
-        printf("\nOR: ");
-        for (j = 0; j < ginitial_or_length[i]; j++)
-        {
-          print_ft_name(ginitial_or[i][j]);
-          printf(" ");
+        
+        if(ginitial_or_length[i]>2){
+          for (j = 0; j < ginitial_or_length[i]; j++)
+          {
+            print_ft_name(ginitial_or[i][j]);
+            printf(" ");
+          }
+          printf("\n");
         }
+          
+
       }
       if ( gcmd_line.ehc ) {
         /*这个初始状态可以是样本，就是根据这个ginitial_state进行搜索plan*/
@@ -1208,22 +1221,28 @@ int main( int argc, char *argv[] )
       TIME( gsearch_time );
 
       if ( found_plan ) {
-        print_plan();
+        // print_plan();
+        printf("\n\nff: found legal plan as follows");
+        printf("\n规划长度：%d\n",gnum_plan_ops);
       }else{
         break;
       }
       // output_planner_info();
-      
+      times(&start);
       if(conputerCounter(ce,&celen)){
           printf("找到反例！\n");
           freesomeVar();
           addCounter(ce,celen);
+          times(&end);
+          TIME(gcounter_time);
           initSomeVar();
           printf("\n");
           // for(i=0;i<celen;i++)
           //   printf("%d,",ce[i]);
           // printf("\n");
       }else{
+        times(&end);
+        TIME(gcounter_time);
         printf("没有反例，找到最终解！\n");
         break;
       }
@@ -1236,33 +1255,47 @@ int main( int argc, char *argv[] )
   }else{
     printf("规划器未寻找到规划解!\n");
   }
+  output_planner_info();
   /*初始的初始状态以及目标状态*/
   printf("\n初始目标状态\n");
-  print_state(ginitial_state_old);
-  printf("\n\n----------------------INITIAL ORS:-----------------------------");
+  printf("Fold:%d Uold:%d\n",ginitial_state_old.num_F,ginitial_state_old.num_U);
+  // printf("\n\n----------------------INITIAL ORS:-----------------------------");
+  printf("num_Orold:%d\n",gnum_initial_or_old);
+  printf("参数大于2的OR: \n");
   for (i = 0; i < gnum_initial_or_old; i++)
   {
-    printf("\nOR: ");
-    for (j = 0; j < ginitial_or_length_old[i]; j++)
-    {
-      print_ft_name(ginitial_or_old[i][j]);
-      printf(" ");
+    
+    if(ginitial_or_length_old[i]>2){
+      for (j = 0; j < ginitial_or_length_old[i]; j++)
+      {
+        print_ft_name(ginitial_or_old[i][j]);
+        printf(" ");
+      }
+      printf("\n");
     }
+      
   }
   /*当前反例添加的目标状态*/
-  printf("\n当前反例添加的目标状态\n");
-  print_state(ginitial_state);
-  printf("\n\n----------------------INITIAL ORS:-----------------------------");
+  printf("\n\n当前反例添加的目标状态\n");
+  printf("Fcur:%d Ucur:%d\n",ginitial_state.num_F,ginitial_state.num_U);
+      // printf("\n\n----------------------INITIAL ORS:-----------------------------");
+  printf("num_Orcur:%d\n",gnum_initial_or);
+  printf("参数大于2的OR: \n");
   for (i = 0; i < gnum_initial_or; i++)
   {
-    printf("\nOR: ");
-    for (j = 0; j < ginitial_or_length[i]; j++)
-    {
-      print_ft_name(ginitial_or[i][j]);
-      printf(" ");
+    
+    if(ginitial_or_length[i]>2){
+      for (j = 0; j < ginitial_or_length[i]; j++)
+      {
+        print_ft_name(ginitial_or[i][j]);
+        printf(" ");
+      }
+      printf("\n");
     }
+      
   }
-  output_planner_info();
+  printf("\n");
+  printf("\ncounter_time:%.2f",gcounter_time);
   printf("\nplan length:%d\niteration:%d\n",gnum_plan_ops,iteration);
 
   /*测试neg_string每次迭代的重置*/
