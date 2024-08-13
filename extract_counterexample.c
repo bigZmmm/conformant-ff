@@ -28,6 +28,7 @@
 /*对具有相对真值的谓语添加约束*/
 char* neg_assert;
 
+/*装换大写为小写*/
 void toLower(char* str){
   int len = strlen(str);
   int i;
@@ -37,7 +38,7 @@ void toLower(char* str){
   }
 }
 
-
+/*判断index对应的fact是否在add集或在del集合中，其中nums是add集/del集合 n为add集/del集合的长度*/
 bool inFacts(int *nums,int n,int index){
   int i;
   for(i=0;i<n;i++){
@@ -84,6 +85,8 @@ Z3_context mk_context()
 }
 
 /*end-Z3*/
+
+/*提取最后一个数字，代表着plan的步数*/
 int extractFinalNum(char *var){
   // printf("\nvar: %s",var);
   int num=0,ten=1,len=strlen(var),i;
@@ -96,6 +99,7 @@ int extractFinalNum(char *var){
   return num;
 }
 
+/*提取倒数第二个数字，代表着fact的下标*/
 int extractFinalSeconNum(char *var){
   int num=0,ten=1,len=strlen(var),i;
   while(var[len-1]!='-'){
@@ -111,7 +115,7 @@ int extractFinalSeconNum(char *var){
   return num;
 }
 
-
+/*连接now（第一个参数）和add（第二个参数），并返回一个新的字符串替换now*/
 char* contactString(char *now,char *add){
     int total_length = strlen(add) + strlen(now)+2;
     char *new_var = (char*)calloc(total_length,sizeof(char));
@@ -123,6 +127,7 @@ char* contactString(char *now,char *add){
     return new_var;
 }
 
+/*装换数字num为一个字符串，保存在str中，如果num为负数，会在前添加一个负号*/
 char* itoa(int num,char* str,int radix)
 {
     char index[]="0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -164,6 +169,7 @@ void expandString(char* cur,int n){
   cur = (char *)realloc(cur, strlen(cur)+n);
 }
 
+/*返回一个 fact转换为smt变量的字符串（未添加timestep），在最后通过-连接fact的index下标，以便于后续提取反例*/
 char *Fact2SmtString(int i)
 {
   char *name,tmp[1000]={0};
@@ -191,14 +197,14 @@ char *Fact2SmtString(int i)
   return name;
 }
 
-/*更新最新的目标表*/
+/*更新最新的目标表，设置newgoal中的下标index为1*/
 void addToNgoal(int *newgoal,int index){
   if(newgoal[index]==0){
     newgoal[index]=1;
   }
 }
 
-
+/*构成最终的smt变量，添加了timestep*/
 char* toSmtVariableString(char *now,int timestep){
   char *str=(char *)calloc(20,sizeof(char));
   itoa(timestep,str,10);
@@ -212,6 +218,7 @@ char* toSmtVariableString(char *now,int timestep){
   return new_var;
 }
 
+/*对具有相对真值的fact，其约束写进到smt公式中*/
 void assert_Neg(int cur_fact,int timestep,SimpleSet *regre_variable){
     /*对于timestep0去重添加*/
     if(timestep==0&&fact_unuse_zero[cur_fact]==1||neg_fact[cur_fact]==0)
@@ -227,6 +234,7 @@ void assert_Neg(int cur_fact,int timestep,SimpleSet *regre_variable){
     tmp = contactString(tmp,")))\n");
     neg_assert = contactString(neg_assert,tmp);
     /*printf("\n%s\n",tmp);*/
+    /*判断这个变量是否已经添加到变量表中了*/
     if(set_add(regre_variable,neg_var)){
       free(neg_var);
     }
@@ -241,6 +249,9 @@ void assert_Neg(int cur_fact,int timestep,SimpleSet *regre_variable){
 /* - - 当前回溯谓语 谓语前动作 - 所有变量 下一轮回归的谓语集合 当前时间步 */
 void addAction2Goal(char **simulation,char **preference,int current_goal_fact,Action *a,int new_len,SimpleSet *regre_variable,int *new_goal,int timestep){
     /*print_ft_name(current_goal_fact);*/
+    
+    if(strcmp(a->name,"REQUEST-COPY")==0)
+      print_Action(a);
     addToNgoal(new_goal,current_goal_fact);
     int i,e;
     char *fact2string = toSmtVariableString(Fact2SmtString(current_goal_fact),timestep);
@@ -469,6 +480,7 @@ int extractCounter(Z3_context ctx,Z3_model m,int *ce){
   return celen;
 }
 
+/*使ginitial_state的所有oneof和or都为空*/
 void initGinitiaState(){
   int i,j;
   /*初始化ginitial_state*/
@@ -490,6 +502,7 @@ void initGinitiaState(){
   memset(gplan_ops,0,MAX_PLAN_LENGTH);
 }
 
+/*第i个or要添加新的进来*/
 void addNewOr(int index){
   int i;
   /*如果当前需要存储的or，超出了初始化or的大小，进行扩充*/
@@ -509,13 +522,16 @@ void addNewOr(int index){
     }
   }
   gnum_initial_or++;
-} 
+}
 
-
+/*ce为提取出来的单个反例*/
 void addCounter(int *ce,int celen){
-  int i,j;
+  int i,j,k;
   initGinitiaState();
-  /*对ginitial_fact进行插入*/
+  /*对ginitial_fact进行插入单个反例对应的F和UF
+    更新contains的实现反例集的增加
+  */
+  
   for(i=0;i<ginitial_state_old.num_F;i++){
     if((ce[ginitial_state_old.F[i]]==1)&&(contains_ginitial_state.F[i]==0)){
       contains_ginitial_state.F[i]=1;
@@ -534,7 +550,6 @@ void addCounter(int *ce,int celen){
       contains_ginitial_state.num_unknown_E++;
     }
   }
-  
   /*对or进行插入*/
   for (i = 0; i < gnum_initial_or_old; i++)
   {
@@ -548,21 +563,21 @@ void addCounter(int *ce,int celen){
   }
 
   /*更新初始集合*/
-  /*首先对初始状态的更新*/
+  /*首先对初始状态的确定F更新*/
   for(i=0;i<ginitial_state_old.num_F;i++){
     if(contains_ginitial_state.F[i]==1){
       ginitial_state.F[ginitial_state.num_F++] = ginitial_state_old.F[i];
       isadd2Ffact[ginitial_state_old.F[i]]=1;
     }
   }
-  /*对于or和unknown的情况特殊处理*/
+  /*对于U中存在的情况特殊处理*/
   for(i=0;i<ginitial_state_old.num_U;i++){
-    /*如果在U中已经添加,并且不在or中*/
+    /*如果在U中已经添加，可能是or中的也可能是由unknown形成的*/
     if(contains_ginitial_state.U[i]==1){
       /*是not-a*/
       if(neg_fact[ginitial_state_old.U[i]]!=0){
-         /*如果U没有a,则加入到F,有a加入到U*/
-         /*找到是否有a*/
+         /*如果U没有a,说明它只有一个真值是确定的加入到F,有a说明是不确定的，加入到U*/
+         /*找到U是否有a，有a的话说明他是非确定的，要添加到U中*/
          int fact_index = ginitial_equivalence_A[neg_fact[ginitial_state_old.U[i]]-1],flag=0;
          for(j=0;j<ginitial_state_old.num_U;j++){
             if(contains_ginitial_state.U[j]==1&&(ginitial_state_old.U[j]==fact_index))
@@ -615,6 +630,7 @@ void addCounter(int *ce,int celen){
   {
     for (j = 0; j < ginitial_or_length_old[i]; j++)
     {
+      /*如果这个oneof或在or的长度为1，那么这个fact就是F里面的*/
       if(contains_ginitial_or_length[i]==1&&contains_ginitial_or[i][j]==1){
         /*判断这个F是否已经添加*/
         if(isadd2Ffact[ginitial_or_old[i][j]]==0){
@@ -623,7 +639,15 @@ void addCounter(int *ce,int celen){
         }
         break;
       }else if(contains_ginitial_or_length[i]>1){
-        addNewOr(i);
+        int flag=0,unum=0;
+        for(k=0;k<ginitial_or_length_old[i];k++){
+          if(contains_ginitial_or[i][k]==1&&isadd2Ufact[ginitial_or_old[i][k]]==1){
+            flag=1;
+            unum++;
+          }
+        }
+        if(flag==1&&unum>1)
+          addNewOr(i);
         break;
       }
     }
@@ -721,11 +745,12 @@ Bool conputerCounter(int *ce,int *celen)
   /*对目标状态进行回归，得到回归assert*/
   int new_goal[10005]={0};
   for (i = timestep-1; i >=0; i--)
-  {   
+  {
     /*
     printf("\n%d :",i);
     print_op_name( gplan_ops[i] );
     */
+  //  print_op_name( gplan_ops[i] );
     Action *a = gop_conn[gplan_ops[i]].action;
     int new_len=0;
     for(j=0;j<goal_len;j++){        
@@ -788,9 +813,11 @@ Bool conputerCounter(int *ce,int *celen)
       // }
 
       /*对U中的not-a进行处理,三种情况:1.oneof(不需要处理) 2.or(对not进行添加) 3.unknown(除了对not进行添加,还要对a进行屏蔽)
-        所以只需要判断这个not是否在or中,其它的不用处理（必然存在的情况，有not-a在U中，必然有a在U中---cff）
+        所以只需要判断这个not是否在or中,其它的不用处理（必然处理过的情况，如果有not-a在U中，必然有a在U中，这个不需要处理，因为已经在处理a时处理了---cff）
         用oneof对not-a和a进行约束
       */
+
+      /*存在not-a 但是不在oneof中，这种单独生成一个oneof*/
       if(neg_fact[ginitial_state_old.U[i]]!=0&&factset[ginitial_state_old.U[i]]!=1){
           char *neg_a = toSmtVariableString(Fact2SmtString(ginitial_state_old.U[i]),0);
           int index = neg_fact[ginitial_state_old.U[i]]-1;
@@ -877,6 +904,7 @@ Bool conputerCounter(int *ce,int *celen)
   final_smt=contactString(final_smt,init_smt);
   toLower(final_smt);
   set_destroy(&variables);
+  printf("\n%s\n",init_smt);
   /*printf("\n%s\n",preference);*/
   // printf("\n%s\n",final_smt);
   /*printf("\n%s\n",neg_assert);*/
@@ -900,7 +928,7 @@ Bool conputerCounter(int *ce,int *celen)
                               final_smt,
                                0, 0, 0,
                                0, 0, 0);
-  /*printf("formula: %s\n", Z3_ast_vector_to_string(ctx, f));*/
+  // printf("formula: %s\n", Z3_ast_vector_to_string(ctx, f));
   /*加入所有的断言*/
   int n = Z3_ast_vector_size(ctx,f);
   printf("\n当前收集的断言数：%d\n",n);
@@ -934,7 +962,7 @@ Bool conputerCounter(int *ce,int *celen)
         m = Z3_solver_get_model(ctx, s);
         if (m) Z3_model_inc_ref(ctx, m);
         // char *counter = Z3_model_to_string(ctx, m);
-        /*printf("\n%s\n",counter);*/
+        // /*printf("\n%s\n",counter);*/
         *celen = extractCounter(ctx,m,ce);
         break;
   }

@@ -2030,15 +2030,15 @@ void build_connectivity_graph(void)
     neg_true_fact[ginitial_equivalence_A[i]]=i+1;
   }
    /*从这里开始，修改反例*/
-  // for (i = 0; i < gnum_initial_or; i++)
-  //   {
-  //     printf("\nOR: ");
-  //     for (j = 0; j < ginitial_or_length[i]; j++)
-  //     {
-  //       print_ft_name(ginitial_or[i][j]);
-  //       printf(" ");
-  //     }
-  //   }
+  for (i = 0; i < gnum_initial_or; i++)
+    {
+      printf("\nOR: ");
+      for (j = 0; j < ginitial_or_length[i]; j++)
+      {
+        print_ft_name(ginitial_or[i][j]);
+        printf(" ");
+      }
+    }
   /* 存档一个or和initial_state的数据，包括构建一个判断or和initial_state中fact是否存在的bool表
      对于bool or，只是每个or的长度设置为0
      对于bool initial，每个类型fact都设置为0

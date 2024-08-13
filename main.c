@@ -413,7 +413,7 @@ State ginitial_state_old;
 int **ginitial_or_old;
 int *ginitial_or_length_old;
 int gnum_initial_or_old;
-/*判断是否在初始反例集中*/
+/*存储的是当前的反例集，用于判断是否在初始反例集中*/
 State contains_ginitial_state;
 int **contains_ginitial_or;
 int *contains_ginitial_or_length;
@@ -1154,13 +1154,13 @@ int main( int argc, char *argv[] )
   ginitial_state.num_F=1;
   ginitial_state.F[0]=10;
   */
-  // printf("/n输出初始状态");
-  // print_state(ginitial_state);
+  printf("/n输出初始状态");
+  print_state(ginitial_state);
  /* printf("maxF:%d\n",ginitial_state.max_F);
   printf("\n");
 */
-  // printf("---------\n目标状态");
-  // print_state(ggoal_state);
+  printf("---------\n目标状态");
+  print_state(ggoal_state);
   // printf("\n");
   // printf("---------\n");
 
@@ -1183,22 +1183,22 @@ int main( int argc, char *argv[] )
     for(;;){
       iteration++;
       printf("\n第%d次迭代\n当前初始状态:\n",iteration);
-      // print_state(ginitial_state);
+      print_state(ginitial_state);
       printf("F:%d U:%d\n",ginitial_state.num_F,ginitial_state.num_U);
       // printf("\n\n----------------------INITIAL ORS:-----------------------------");
       printf("num_Or:%d\n",gnum_initial_or);
-      printf("参数大于2的OR: \n");
+      printf("OR: \n");
       for (i = 0; i < gnum_initial_or; i++)
       {
         
-        if(ginitial_or_length[i]>2){
+        // if(ginitial_or_length[i]>2){
           for (j = 0; j < ginitial_or_length[i]; j++)
           {
             print_ft_name(ginitial_or[i][j]);
             printf(" ");
           }
           printf("\n");
-        }
+        // }
           
 
       }
@@ -1229,12 +1229,15 @@ int main( int argc, char *argv[] )
       }
       // output_planner_info();
       times(&start);
+      /*重新找到反例，贪婪增加初始集的大小*/
       if(conputerCounter(ce,&celen)){
           printf("找到反例！\n");
+          /*释放此次迭代申请的空间*/
           freesomeVar();
           addCounter(ce,celen);
           times(&end);
           TIME(gcounter_time);
+          /*感觉初始集初始化规划器*/
           initSomeVar();
           printf("\n");
           // for(i=0;i<celen;i++)
